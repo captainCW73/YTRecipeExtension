@@ -21,7 +21,8 @@ createServer(async (request, response) => {
   try {
     const body = await readJson(request);
     const recipe = await extractRecipe(body);
-    writeJson(response, 200, { ok: true, recipe });
+    if (recipe) writeJson(response, 200, { ok: true, recipe });
+    else writeJson(response, 200, { ok: false, error: "no video-supported recipe" });
   } catch (error) {
     writeJson(response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
   }
@@ -32,18 +33,13 @@ createServer(async (request, response) => {
 async function extractRecipe(body) {
   const request = body.request || {};
   const settings = body.settings || {};
-  const links = recipeLinks(request.description || "");
-  for (const link of links) {
-    const recipe = await scrapeRecipePage(link, request.title).catch(() => null);
-    if (recipe) return recipe;
-  }
 
   for (const provider of providerOrder(settings)) {
     const recipe = await aiRecipe(request, settings, provider).catch(() => null);
     if (recipe) return recipe;
   }
 
-  return localFallback(request);
+  return null;
 }
 
 function providerOrder(settings) {
@@ -173,9 +169,17 @@ function scrapeHtmlHeuristic(html, url, fallbackTitle) {
 }
 
 async function aiRecipe(request, settings, provider) {
-  const prompt = `Create a beginner-friendly recipe card from this YouTube cooking video data.
+  const prompt = `Extract a recipe card ONLY from this specific YouTube video's provided description and captions.
 Return ONLY JSON with title, summary, details array, equipment array, ingredientGroups [{title,items}], instructionGroups [{title,steps}], notes array.
-Do not copy copyrighted recipe text. Use your own wording. Include measurements when likely.
+Trust rule:
+- Do not use outside recipe knowledge.
+- Do not use the title to infer ingredients, measurements, seasoning, temperatures, timing, or steps.
+- Do not add common ingredients unless the description/captions explicitly mention them.
+- Preserve the video's actual order of operations.
+- If a measurement is not present, omit the measurement.
+- If steps are not present, return an empty instructionGroups array.
+- If ingredients are not present, return an empty ingredientGroups array.
+- Summaries and notes must only describe facts present in the description/captions.
 
 Title: ${request.title}
 URL: ${request.url}
@@ -207,7 +211,7 @@ async function ollamaRecipe(request, settings, prompt) {
   if (!response.ok) throw new Error(`Ollama ${response.status}`);
   const data = await response.json();
   const parsed = JSON.parse(extractJsonText(data.response || ""));
-  return normalizeAiRecipe(parsed, request, "Local Ollama model created this from video text because no usable recipe page was found.", "agent-ollama-1");
+  return normalizeAiRecipe(parsed, request, "Local Ollama extracted this only from the YouTube description and captions.", "agent-ollama-1");
 }
 
 async function openAiCompatibleRecipe(request, settings, provider, prompt) {
@@ -221,7 +225,7 @@ async function openAiCompatibleRecipe(request, settings, provider, prompt) {
     body: JSON.stringify({
       model: settings.model || defaultModel(provider),
       messages: [
-        { role: "system", content: "You are a precise recipe extraction assistant. Return strict JSON only." },
+        { role: "system", content: "You are a precise recipe extraction assistant. Use only the provided YouTube description and captions. Never infer missing ingredients or steps. Return strict JSON only." },
         { role: "user", content: prompt }
       ],
       temperature: 0.2
@@ -231,7 +235,7 @@ async function openAiCompatibleRecipe(request, settings, provider, prompt) {
   const data = await response.json();
   const raw = data.choices?.[0]?.message?.content || "";
   const parsed = JSON.parse(extractJsonText(raw));
-  return normalizeAiRecipe(parsed, request, `${providerLabel(provider)} created this from video text because no usable recipe page was found.`, `agent-${provider}-1`);
+  return normalizeAiRecipe(parsed, request, `${providerLabel(provider)} extracted this only from the YouTube description and captions.`, `agent-${provider}-1`);
 }
 
 async function geminiRecipe(request, settings, prompt) {
@@ -253,7 +257,7 @@ async function geminiRecipe(request, settings, prompt) {
   const data = await response.json();
   const raw = data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "";
   const parsed = JSON.parse(extractJsonText(raw));
-  return normalizeAiRecipe(parsed, request, "Gemini created this from video text because no usable recipe page was found.", "agent-gemini-1");
+  return normalizeAiRecipe(parsed, request, "Gemini extracted this only from the YouTube description and captions.", "agent-gemini-1");
 }
 
 async function claudeRecipe(request, settings, prompt) {
@@ -269,7 +273,7 @@ async function claudeRecipe(request, settings, prompt) {
       model: settings.model || "claude-3-5-haiku-latest",
       max_tokens: 1800,
       temperature: 0.2,
-      system: "You are a precise recipe extraction assistant. Return strict JSON only.",
+      system: "You are a precise recipe extraction assistant. Use only the provided YouTube description and captions. Never infer missing ingredients or steps. Return strict JSON only.",
       messages: [{ role: "user", content: prompt }]
     })
   });
@@ -277,7 +281,7 @@ async function claudeRecipe(request, settings, prompt) {
   const data = await response.json();
   const raw = data.content?.map((part) => part.text || "").join("") || "";
   const parsed = JSON.parse(extractJsonText(raw));
-  return normalizeAiRecipe(parsed, request, "Claude created this from video text because no usable recipe page was found.", "agent-claude-1");
+  return normalizeAiRecipe(parsed, request, "Claude extracted this only from the YouTube description and captions.", "agent-claude-1");
 }
 
 function apiBaseUrl(settings, provider) {
@@ -299,11 +303,12 @@ function providerLabel(provider) {
   return "OpenAI";
 }
 
-function normalizeAiRecipe(data, request, sourceNote = "AI agent created this from video text because no usable recipe page was found.", modelVersion = "agent-ai-1") {
+function normalizeAiRecipe(data, request, sourceNote = "AI agent extracted this only from the YouTube description and captions.", modelVersion = "agent-ai-1") {
   const ingredientGroups = normalizeGroups(data.ingredientGroups, "Ingredients", "items");
   const instructionGroups = normalizeGroups(data.instructionGroups, "Instructions", "steps");
   const ingredients = ingredientGroups.flatMap((group) => group.items);
   const instructions = instructionGroups.flatMap((group) => group.steps);
+  if (!ingredients.length && !instructions.length) return null;
   return {
     title: cleanText(data.title || request.title || "Recipe"),
     url: request.url,
@@ -323,37 +328,6 @@ function normalizeAiRecipe(data, request, sourceNote = "AI agent created this fr
     modelConfidence: 0.82,
     modelVersion
   };
-}
-
-function localFallback(request) {
-  const title = request.title || "Recipe";
-  const lower = title.toLowerCase();
-  if (lower.includes("vanilla cake")) {
-    return normalizeAiRecipe({
-      title,
-      summary: "A beginner-friendly vanilla cake with simple vanilla frosting.",
-      details: ["Prep: 25 minutes", "Bake: 28 to 32 minutes", "Servings: 12 slices"],
-      equipment: ["2 8-inch cake pans", "Mixing bowls", "Electric mixer", "Cooling rack"],
-      ingredientGroups: [
-        { title: "For the cake", items: ["2 1/2 cups all-purpose flour", "2 tsp baking powder", "1/2 tsp salt", "3/4 cup softened butter", "1 1/2 cups sugar", "3 eggs", "1 tbsp vanilla", "1 cup milk or buttermilk"] },
-        { title: "For the frosting", items: ["1 cup softened butter", "4 cups powdered sugar", "2 to 3 tbsp milk or cream", "2 tsp vanilla", "Pinch of salt"] }
-      ],
-      instructionGroups: [
-        { title: "Bake the cake", steps: ["Preheat oven to 350F and prepare two cake pans.", "Whisk flour, baking powder, and salt.", "Beat butter and sugar until fluffy.", "Add eggs one at a time, then vanilla.", "Alternate dry ingredients with milk and mix just until smooth.", "Bake until the center springs back, then cool completely."] },
-        { title: "Frost", steps: ["Beat butter until creamy.", "Add powdered sugar gradually.", "Mix in vanilla and enough milk to spread.", "Fill, stack, and frost the cooled cake."] }
-      ],
-      notes: ["Use room-temperature ingredients.", "Do not overmix after adding flour.", "Cool fully before frosting."]
-    }, request);
-  }
-  return normalizeAiRecipe({
-    title,
-    summary: "Recipe inferred from the video title because no recipe page or API result was available.",
-    details: [],
-    equipment: [],
-    ingredientGroups: [{ title: "Ingredients", items: ["Main ingredient from video title", "Salt", "Pepper", "Oil or butter as needed"] }],
-    instructionGroups: [{ title: "Instructions", steps: ["Prepare ingredients.", "Cook using the method shown in the video.", "Taste, adjust seasoning, and serve."] }],
-    notes: ["Add an API key in Cooking Mode settings for smarter extraction."]
-  }, request);
 }
 
 function normalizeGroups(groups, fallbackTitle, itemKey) {

@@ -118,7 +118,7 @@ Cook! Stacey Cook
   assert.equal(parser.hasUsableRecipe(recipe), false);
 });
 
-test("local model gives detailed vanilla cake fallback when text is messy", () => {
+test("local model does not invent vanilla cake recipe when text is messy", () => {
   const recipe = localModel.extractWithLocalRecipeModel(
     "The Most AMAZING Vanilla Cake Recipe",
     "https://youtube.com/watch?v=cake",
@@ -126,19 +126,13 @@ test("local model gives detailed vanilla cake fallback when text is messy", () =
     ""
   );
 
-  assert.equal(recipe.source, "local-model");
-  assert.ok(recipe.ingredients.length >= 8, recipe.ingredients.join(", "));
-  assert.ok(recipe.instructions.length >= 8, recipe.instructions.join(" | "));
-  assert.ok(recipe.summary.length > 20);
-  assert.ok(recipe.equipment.length >= 4);
-  assert.ok(recipe.ingredientGroups.length >= 2);
-  assert.ok(recipe.instructionGroups.length >= 2);
-  assert.ok(recipe.notes.length >= 3);
-  assert.ok(recipe.ingredients.some((item) => /flour/i.test(item)));
-  assert.ok(recipe.instructions.some((step) => /preheat/i.test(step)));
+  assert.equal(recipe.source, "fallback");
+  assert.deepEqual(recipe.ingredients, []);
+  assert.deepEqual(recipe.instructions, []);
+  assert.equal(recipe.instructions.some((step) => /preheat/i.test(step)), false);
 });
 
-test("local model prefers detailed vanilla fallback over messy captions", () => {
+test("local model rejects messy caption scraps instead of using title recipe", () => {
   const recipe = localModel.extractWithLocalRecipeModel(
     "The Most AMAZING Vanilla Cake Recipe",
     "https://youtube.com/watch?v=cake",
@@ -146,10 +140,9 @@ test("local model prefers detailed vanilla fallback over messy captions", () => 
     "ADD ME ON. add the sugar. add 1 and 2 3 cups of granulated sugar. add three eggs one at a time. add ice cold ingredients into an oven. add the flour."
   );
 
-  assert.equal(recipe.source, "local-model");
-  assert.ok(recipe.ingredientGroups.length >= 2);
-  assert.ok(recipe.instructions.some((step) => /preheat/i.test(step)));
+  assert.equal(recipe.source, "fallback");
   assert.equal(recipe.instructions.some((step) => /ADD ME ON/i.test(step)), false);
+  assert.equal(recipe.instructions.some((step) => /preheat/i.test(step)), false);
 });
 
 test("local model does not trust description-only add-step scraps", () => {
@@ -160,11 +153,10 @@ test("local model does not trust description-only add-step scraps", () => {
     ""
   );
 
-  assert.equal(recipe.source, "local-model");
-  assert.ok(recipe.ingredientGroups.length >= 2);
+  assert.equal(recipe.source, "fallback");
   assert.ok(recipe.ingredients.some((item) => /flour/i.test(item)));
   assert.equal(recipe.instructions.some((step) => /ADD ME ON/i.test(step)), false);
-  assert.ok(recipe.instructions.some((step) => /preheat/i.test(step)));
+  assert.equal(recipe.instructions.some((step) => /preheat/i.test(step)), false);
 });
 
 test("detects short-style cake title with sparse text", () => {
@@ -257,7 +249,7 @@ test("local model extracts steak recipe from spoken captions", () => {
   assert.ok(recipe.instructions.some((step) => /rest/i.test(step)));
 });
 
-test("local model prefers rich steak fallback over weak caption scraps", () => {
+test("local model does not invent steak instructions from weak caption scraps", () => {
   const recipe = localModel.extractWithLocalRecipeModel(
     "The Best Steak You'll Ever Make (Restaurant-Quality) | Epicurious 101",
     "https://youtube.com/watch?v=steak",
@@ -265,16 +257,11 @@ test("local model prefers rich steak fallback over weak caption scraps", () => {
     "From browning the meat to letting it rest, your steaks will never be sad and dry again. Frank Proto demonstrates proper technique for selecting and preparing a thick-cut New York strip steak."
   );
 
-  assert.equal(recipe.source, "local-model");
-  assert.ok(recipe.ingredientGroups.length >= 2);
-  assert.ok(recipe.instructionGroups.length >= 2);
-  assert.ok(recipe.ingredients.some((item) => /kosher salt|salt/i.test(item)), recipe.ingredients.join(", "));
-  assert.ok(recipe.ingredients.some((item) => /black pepper|pepper/i.test(item)), recipe.ingredients.join(", "));
-  assert.ok(recipe.ingredients.some((item) => /oil/i.test(item)), recipe.ingredients.join(", "));
+  assert.equal(recipe.source, "fallback");
   assert.equal(recipe.ingredients.some((item) => /^apple$/i.test(item)), false);
-  assert.ok(recipe.instructions.some((step) => /pat.*dry/i.test(step)), recipe.instructions.join(" | "));
-  assert.ok(recipe.instructions.some((step) => /sear/i.test(step)), recipe.instructions.join(" | "));
-  assert.ok(recipe.instructions.some((step) => /rest/i.test(step)), recipe.instructions.join(" | "));
+  assert.equal(recipe.instructions.some((step) => /pat.*dry/i.test(step)), false);
+  assert.equal(recipe.instructions.some((step) => /sear/i.test(step)), false);
+  assert.equal(recipe.instructions.some((step) => /rest/i.test(step)), false);
   assert.equal(recipe.instructions.some((step) => /never be sad|demonstrates proper technique/i.test(step)), false);
 });
 
@@ -311,7 +298,7 @@ Instructions
   assert.equal(recipe.instructions.some((step) => /0:21|Preparing the green onion|Last step|Stacey Cook/i.test(step)), false);
 });
 
-test("local model uses soup fallback when captions are missing or YouTube UI text", () => {
+test("local model shows only supported soup ingredients when captions are missing or YouTube UI text", () => {
   const recipe = localModel.extractWithLocalRecipeModel(
     "Egg Drop Soup | How To Make Quick And Easy Egg Soup At Home",
     "https://youtube.com/watch?v=nseYRtHbjNg",
@@ -330,14 +317,11 @@ Stacey Cook Videos About Show less`,
     ""
   );
 
-  assert.equal(recipe.source, "local-model");
-  assert.ok(recipe.ingredientGroups.length >= 1);
-  assert.ok(recipe.instructionGroups.length >= 2);
+  assert.equal(recipe.source, "fallback");
   assert.ok(recipe.ingredients.some((item) => /6 cup unsalted chicken broth/i.test(item)), recipe.ingredients.join(", "));
-  assert.ok(recipe.ingredients.some((item) => /egg/i.test(item)), recipe.ingredients.join(", "));
-  assert.ok(recipe.ingredients.some((item) => /green onions?/i.test(item)), recipe.ingredients.join(", "));
-  assert.ok(recipe.instructions.some((step) => /cornstarch.*water|slurry/i.test(step)), recipe.instructions.join(" | "));
-  assert.ok(recipe.instructions.some((step) => /drizzle.*eggs?|egg.*ribbons/i.test(step)), recipe.instructions.join(" | "));
+  assert.equal(recipe.ingredients.some((item) => /egg/i.test(item)), false);
+  assert.equal(recipe.ingredients.some((item) => /green onions?/i.test(item)), false);
+  assert.deepEqual(recipe.instructions, []);
   assert.equal(recipe.instructions.some((step) => /show transcript|stacey cook|videos about|show less/i.test(step)), false);
 });
 

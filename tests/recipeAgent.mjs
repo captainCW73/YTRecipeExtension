@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 
-test("recipe agent scrapes linked JSON-LD recipe pages", async () => {
+test("recipe agent does not scrape linked recipe pages", async () => {
   const recipeServer = createServer((request, response) => {
     response.writeHead(200, { "content-type": "text/html" });
     response.end(`<!doctype html>
@@ -29,6 +29,13 @@ test("recipe agent scrapes linked JSON-LD recipe pages", async () => {
   });
   await listen(recipeServer, 0);
   const recipePort = recipeServer.address().port;
+  const ollamaServer = createServer((request, response) => {
+    assert.equal(request.url, "/api/generate");
+    response.writeHead(500, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: "disabled" }));
+  });
+  await listen(ollamaServer, 0);
+  const ollamaPort = ollamaServer.address().port;
 
   const agentPort = await freePort();
   const child = spawn(process.execPath, ["scripts/recipe-agent.mjs"], {
@@ -49,17 +56,18 @@ test("recipe agent scrapes linked JSON-LD recipe pages", async () => {
           description: `Full recipe: http://127.0.0.1:${recipePort}/vanilla-cake-recipe`,
           transcript: ""
         },
-        settings: {}
+        settings: {
+          provider: "ollama",
+          ollamaUrl: `http://127.0.0.1:${ollamaPort}`
+        }
       })
     });
     const data = await response.json();
-    assert.equal(data.ok, true);
-    assert.equal(data.recipe.title, "Test Vanilla Cake");
-    assert.deepEqual(data.recipe.ingredients, ["2 cups flour", "1 cup sugar", "3 eggs"]);
-    assert.ok(data.recipe.instructions.some((step) => /preheat/i.test(step)));
-    assert.equal(data.recipe.sourceNote, "Recipe pulled from the linked recipe website.");
+    assert.equal(data.ok, false);
+    assert.equal(data.recipe, undefined);
   } finally {
     child.kill();
+    await close(ollamaServer);
     await close(recipeServer);
   }
 });
@@ -113,7 +121,7 @@ test("recipe agent uses local Ollama provider when no recipe link exists", async
     assert.equal(data.ok, true);
     assert.equal(data.recipe.title, "AI Vanilla Cake");
     assert.equal(data.recipe.modelVersion, "agent-ollama-1");
-    assert.ok(data.recipe.sourceNote.includes("Local Ollama"));
+    assert.ok(data.recipe.sourceNote.includes("description and captions"));
     assert.deepEqual(data.recipe.ingredientGroups[0].items, ["2 cups flour", "1 cup sugar", "3 eggs"]);
   } finally {
     child.kill();

@@ -34,13 +34,12 @@ test("local model does not turn food chatter into a fake recipe", () => {
   }
 });
 
-test("local model infers a recipe for title-only cooking tutorials", () => {
+test("local model does not infer recipes from title-only cooking tutorials", () => {
   const recipe = localModel.extractWithLocalRecipeModel("How To Cook The Perfect Steak", "https://youtube.com/watch?v=eval", "", "");
-  assert.equal(recipe.source, "local-model");
-  assert.ok(recipe.ingredients.some((item) => /steak/i.test(item)), `Missing steak: ${recipe.ingredients.join(", ")}`);
-  assert.ok(recipe.instructions.some((step) => /sear/i.test(step)), `Missing sear: ${recipe.instructions.join(" | ")}`);
-  assert.ok(recipe.instructions.some((step) => /rest/i.test(step)), `Missing rest: ${recipe.instructions.join(" | ")}`);
-  assert.ok(recipe.modelConfidence >= 0.7, `Low confidence: ${recipe.modelConfidence}`);
+  assert.equal(recipe.source, "fallback");
+  assert.equal(recipe.ingredients.length, 0);
+  assert.equal(recipe.instructions.length, 0);
+  assert.ok(recipe.modelConfidence <= evalData.thresholds.negativeConfidence, `High confidence: ${recipe.modelConfidence}`);
 });
 
 test("local model skips title-only food-adjacent videos without tutorial intent", () => {

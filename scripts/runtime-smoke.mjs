@@ -99,11 +99,10 @@ try {
   const titleOnlyState = await waitForRecipe(worker, titleOnlyPage);
   const titleOnlyRecipe = titleOnlyState.cookingMode?.recipe;
   assert(titleOnlyRecipe, "No title-only recipe stored after button click");
-  assert(titleOnlyRecipe.source === "local-model", `Expected title-only local-model source, got ${titleOnlyRecipe.source}`);
-  assert(titleOnlyRecipe.ingredients.some((item) => /steak/i.test(item)), `Title-only missing steak: ${titleOnlyRecipe.ingredients.join(", ")}`);
-  assert(titleOnlyRecipe.instructions.some((step) => /sear/i.test(step)), `Title-only missing sear: ${titleOnlyRecipe.instructions.join(" | ")}`);
-  assert(titleOnlyRecipe.instructions.some((step) => /rest/i.test(step)), `Title-only missing rest: ${titleOnlyRecipe.instructions.join(" | ")}`);
-  assert(titleOnlyRecipe.modelConfidence >= 0.7, `Title-only low confidence: ${titleOnlyRecipe.modelConfidence}`);
+  assert(titleOnlyRecipe.source === "fallback", `Expected title-only fallback source, got ${titleOnlyRecipe.source}`);
+  assert(titleOnlyRecipe.ingredients.length === 0, `Title-only invented ingredients: ${titleOnlyRecipe.ingredients.join(", ")}`);
+  assert(titleOnlyRecipe.instructions.length === 0, `Title-only invented steps: ${titleOnlyRecipe.instructions.join(" | ")}`);
+  assert(titleOnlyRecipe.modelConfidence <= 0.2, `Title-only high confidence: ${titleOnlyRecipe.modelConfidence}`);
 
   const agentPort = await freePort();
   agentProcess = spawn(process.execPath, ["scripts/recipe-agent.mjs"], {
@@ -130,12 +129,10 @@ try {
   const linkedState = await waitForRecipe(worker, linkedRecipePage);
   const linkedRecipe = linkedState.cookingMode?.recipe;
   assert(linkedRecipe, "No linked recipe stored after button click");
-  assert(/Linked Vanilla Cake/i.test(linkedRecipe.title), `Wrong linked title: ${linkedRecipe.title}`);
-  assert(linkedRecipe.sourceNote === "Recipe pulled from the linked recipe website.", `Wrong source note: ${linkedRecipe.sourceNote}`);
-  assert(linkedRecipe.ingredientGroups?.length > 0, "Linked recipe missing ingredient groups");
-  assert(linkedRecipe.instructionGroups?.length > 0, "Linked recipe missing instruction groups");
-  assert(linkedRecipe.ingredients.some((item) => /flour/i.test(item)), `Linked recipe missing flour: ${linkedRecipe.ingredients.join(", ")}`);
-  assert(linkedRecipe.instructions.some((step) => /preheat/i.test(step)), `Linked recipe missing preheat: ${linkedRecipe.instructions.join(" | ")}`);
+  assert(!/Linked Vanilla Cake/i.test(linkedRecipe.title), `Linked page was used as source: ${linkedRecipe.title}`);
+  assert(linkedRecipe.source === "fallback", `Expected linked fallback source, got ${linkedRecipe.source}`);
+  assert(!linkedRecipe.ingredients.some((item) => /flour/i.test(item)), `Linked page ingredient leaked in: ${linkedRecipe.ingredients.join(", ")}`);
+  assert(!linkedRecipe.instructions.some((step) => /preheat/i.test(step)), `Linked page instruction leaked in: ${linkedRecipe.instructions.join(" | ")}`);
 
   console.log(JSON.stringify({
     ok: true,

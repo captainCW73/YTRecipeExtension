@@ -445,10 +445,6 @@ const titleRecipeTemplates: TitleRecipeTemplate[] = [
 
 export function extractWithLocalRecipeModel(title: string, url: string, description: string, transcript: string): RecipePayload {
   const descriptionRecipe = parseRecipe(title, url, description);
-  const initialLikelyCooking = analyzeRecipeVideo(title, `${description}\n${transcript}`).likely;
-  const initialFallbackText = buildFallback(descriptionRecipe.fallbackText, cleanRecipeText(transcript || description));
-  const initialTitleRecipe = inferRecipeFromTitle(title, url, initialLikelyCooking, initialFallbackText, descriptionRecipe.ingredients);
-  if (!transcript && initialTitleRecipe && shouldPreferTitleRecipe(initialTitleRecipe, descriptionRecipe.ingredients, descriptionRecipe.instructions)) return initialTitleRecipe;
   if (hasUsableRecipe(descriptionRecipe)) return descriptionRecipe;
 
   const sourceText = transcript || description;
@@ -462,14 +458,11 @@ export function extractWithLocalRecipeModel(title: string, url: string, descript
   const finalIngredients = measuredDescriptionIngredients.length ? mergeIngredientLists(measuredDescriptionIngredients, ingredients) : ingredients;
   const hasLocalRecipe = likelyCooking && finalIngredients.length >= 3 && instructions.length >= 3 && !looksLikeWeakRecipeScraps(finalIngredients, instructions);
   const modelConfidence = scoreModelConfidence(likelyCooking, hasLocalRecipe, finalIngredients.length, instructions.length, cleaned.length);
-  const titleRecipe = inferRecipeFromTitle(title, url, likelyCooking, fallbackText, measuredDescriptionIngredients);
-  if (titleRecipe && shouldPreferTitleRecipe(titleRecipe, finalIngredients, instructions)) return titleRecipe;
-  if (!hasLocalRecipe && titleRecipe) return titleRecipe;
 
   return {
     title: title || "Recipe",
     url,
-    ingredients: hasLocalRecipe ? finalIngredients : [],
+    ingredients: hasLocalRecipe || (likelyCooking && finalIngredients.length >= 2) ? finalIngredients : [],
     instructions: hasLocalRecipe ? instructions : [],
     fallbackText,
     extractedAt: Date.now(),
@@ -480,8 +473,8 @@ export function extractWithLocalRecipeModel(title: string, url: string, descript
         ? "Ingredients came from the description; Cooking Mode built the steps from captions because the description only had chapters."
         : "Local model parsed this from captions because the description did not contain a clean recipe."
       : transcript
-        ? "Captions did not contain a clear recipe, so showing the best available text."
-        : "Local model could not find captions, so it used the best available description text.",
+        ? "Cooking Mode could not verify clear cooking steps from the captions, so it is only showing video-supported items."
+        : "Cooking Mode found ingredients, but no video-supported step-by-step instructions.",
     modelConfidence,
     modelVersion: localRecipeModelWeights.version
   };
@@ -533,6 +526,7 @@ function looksLikeWeakRecipeScraps(ingredients: string[], instructions: string[]
   if (!ingredients.length && instructions.length < 5) return true;
   if (ingredients.some((item) => /\bviews?\b/i.test(item))) return true;
   if (instructions.some((step) => /\b(add me on|subscribe|follow|views?|show transcript|show less|videos about|stacey cook|demonstrates proper technique|never be sad|from browning the meat)\b/i.test(step))) return true;
+  if (instructions.filter((step) => /^\s*add\b/i.test(step)).length >= Math.max(3, instructions.length - 1)) return true;
   if (instructions.length <= 2 && !instructions.some((step) => actionTerms.some((term) => includesPhrase(step, term)))) return true;
   const actionCount = instructions.filter((step) => actionTerms.some((term) => includesPhrase(step, term))).length;
   const prepCount = instructions.filter((step) => prepTerms.some((term) => includesPhrase(step, term))).length;

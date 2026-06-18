@@ -8,8 +8,11 @@ Cooking Mode adds a `Cook` button on likely cooking videos and Shorts. When clic
 
 It is built for the messy reality of YouTube cooking videos:
 
-- If the description links to a recipe website, the backend fetches that page and extracts recipe data.
-- If no recipe page exists, the backend asks a local AI model to create a recipe from title, description, and captions.
+- Extraction is evidence-first: only YouTube description text and captions/transcript are used.
+- The title is used for detection, not for inventing ingredients, measurements, or steps.
+- Linked recipe websites are not scraped or substituted for the video.
+- If steps are missing, Cooking Mode shows partial supported info instead of making up instructions.
+- The backend can ask an AI provider to structure only the provided description/captions.
 - If AI/backend is unavailable, the extension falls back to its bundled local parser/model.
 - The screen can stay awake until the video ends or for a chosen time.
 
@@ -18,8 +21,8 @@ It is built for the messy reality of YouTube cooking videos:
 - `src/contentScript.ts`: injects YouTube button, reads video title/description/captions, handles wake lock.
 - `src/background.ts`: opens side panel, stores recipe state, calls local backend agent.
 - `src/sidepanel.ts`: renders the recipe card and settings UI.
-- `scripts/recipe-agent.mjs`: local backend agent for linked recipe scraping and AI provider calls.
-- `src/localRecipeModel.ts`: bundled fallback recipe model for offline-ish extraction.
+- `scripts/recipe-agent.mjs`: local backend agent for AI provider calls over video text only.
+- `src/localRecipeModel.ts`: bundled local parser/model for offline-ish extraction.
 - `src/recipeParser.ts`: heuristic parser/detector.
 
 ## AI Providers
@@ -93,9 +96,10 @@ Working v1:
 
 - YouTube watch/Shorts button
 - side panel recipe card
-- linked recipe website scraping
 - local Ollama backend
 - OpenAI/Groq/DeepSeek/Gemini/Claude provider settings
+- no title-only recipe invention
+- no linked recipe website scraping
 - wake-lock controls
 - copy recipe
 - runtime smoke tests
