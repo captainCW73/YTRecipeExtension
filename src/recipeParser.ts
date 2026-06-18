@@ -283,6 +283,9 @@ function extractInstructions(lines: string[]): string[] {
   const fromSection = extractInstructionSection(lines, sectionMarkers.instructions, ["notes", "tips", "nutrition", "chapters"]);
   if (fromSection.length > 0) return fromSection.slice(0, 30);
 
+  const chapters = extractChapterInstructions(lines);
+  if (chapters.length > 0) return chapters.slice(0, 30);
+
   const numbered = lines
     .filter((line) => /^\s*(\d+[.)]|step\s+\d+)/i.test(line))
     .map(normalizeInstructionLine)
@@ -290,12 +293,20 @@ function extractInstructions(lines: string[]): string[] {
   if (numbered.length > 0) return dedupe(numbered).slice(0, 30);
 
   const procedural = lines
-    .filter(shouldUseInstructionLine)
+    .filter((line) => shouldUseInstructionLine(line))
     .map(normalizeInstructionLine)
     .filter(isRecipeStep);
   if (procedural.length > 0) return dedupe(procedural).slice(0, 20);
 
   return [];
+}
+
+function extractChapterInstructions(lines: string[]): string[] {
+  const result = lines
+    .filter(isTimestampChapterLine)
+    .map(normalizeInstructionLine)
+    .filter(isRecipeStep);
+  return dedupe(result);
 }
 
 function extractInstructionSection(lines: string[], starts: string[], stops: string[]): string[] {
@@ -306,7 +317,7 @@ function extractInstructionSection(lines: string[], starts: string[], stops: str
   for (let index = startIndex + 1; index < lines.length; index += 1) {
     const line = lines[index];
     if (stops.some((marker) => isHeading(line, marker)) && result.length > 0) break;
-    if (shouldUseInstructionLine(line)) result.push(normalizeInstructionLine(line));
+    if (shouldUseInstructionLine(line, true)) result.push(normalizeInstructionLine(line));
     if (result.length >= 40) break;
   }
   return dedupe(result);
@@ -365,11 +376,11 @@ function stripBulletPrefix(line: string): string {
   return line.replace(/^[-*•]\s*/, "").trim();
 }
 
-function shouldUseInstructionLine(line: string): boolean {
+function shouldUseInstructionLine(line: string, allowChapterLabel = false): boolean {
   const normalized = normalizeInstructionLine(line);
   if (!looksLikeInstruction(normalized)) return false;
-  if (isTimestampChapterLine(line) && isThinChapterInstruction(normalized)) return false;
-  if (hasRecipeTitleParenthetical(line) && isThinChapterInstruction(normalized)) return false;
+  if (!allowChapterLabel && isTimestampChapterLine(line) && isThinChapterInstruction(normalized)) return false;
+  if (!allowChapterLabel && hasRecipeTitleParenthetical(line) && isThinChapterInstruction(normalized)) return false;
   return true;
 }
 

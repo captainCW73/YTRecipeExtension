@@ -80,7 +80,7 @@ add 1 and 2 3 cups of granulated sugar
   assert.equal(parser.hasUsableRecipe(recipe), false);
 });
 
-test("rejects YouTube chapter labels as recipe instructions", () => {
+test("uses YouTube chapter labels as concise recipe instructions", () => {
   const recipe = parser.parseRecipe("Egg Drop Soup | How To Make Quick And Easy Egg Soup At Home", "https://youtube.com/watch?v=nseYRtHbjNg", `
 Ingredients
 6 cup unsalted chicken broth
@@ -114,8 +114,15 @@ Cook! Stacey Cook
     "4 tbsp cornstarch",
     "2/3 cup water"
   ]);
-  assert.deepEqual(recipe.instructions, []);
-  assert.equal(parser.hasUsableRecipe(recipe), false);
+  assert.deepEqual(recipe.instructions, [
+    "Prepare the green onion, cilantro and egg",
+    "Prepare the cornstarch and water mixture",
+    "Boil the chicken broth",
+    "Add the cornstarch and water mixture",
+    "Add the egg"
+  ]);
+  assert.equal(recipe.instructions.some((step) => /white pepper/i.test(step)), false);
+  assert.equal(parser.hasUsableRecipe(recipe), true);
 });
 
 test("local model does not invent vanilla cake recipe when text is messy", () => {
@@ -311,17 +318,29 @@ test("local model shows only supported soup ingredients when captions are missin
 1/2 tsp sesame oil
 4 tbsp cornstarch
 2/3 cup water
+0:21 - Preparing the green onion, cilantro and egg (How to cook Egg Drop Soup Recipe)
+0:39 - Preparing the cornstarch and water mixture (How to cook Egg Drop Soup Recipe)
+0:54 - Boiling the chicken broth (How to cook Egg Drop Soup Recipe)
+1:19 - Adding the cornstarch and water mixture (How to cook Egg Drop Soup Recipe)
+1:50 - Adding the egg (How to cook Egg Drop Soup Recipe)
 Simple seasonings and fresh ingredients yield a savory soup full of umami flavor in less than 15 minutes
 Show transcript Cook
 Stacey Cook Videos About Show less`,
     ""
   );
 
-  assert.equal(recipe.source, "fallback");
+  assert.equal(recipe.source, "description");
   assert.ok(recipe.ingredients.some((item) => /6 cup unsalted chicken broth/i.test(item)), recipe.ingredients.join(", "));
   assert.equal(recipe.ingredients.some((item) => /egg/i.test(item)), false);
   assert.equal(recipe.ingredients.some((item) => /green onions?/i.test(item)), false);
-  assert.deepEqual(recipe.instructions, []);
+  assert.deepEqual(recipe.instructions, [
+    "Prepare the green onion, cilantro and egg",
+    "Prepare the cornstarch and water mixture",
+    "Boil the chicken broth",
+    "Add the cornstarch and water mixture",
+    "Add the egg"
+  ]);
+  assert.equal(recipe.instructions.some((step) => /white pepper/i.test(step)), false);
   assert.equal(recipe.instructions.some((step) => /show transcript|stacey cook|videos about|show less/i.test(step)), false);
 });
 

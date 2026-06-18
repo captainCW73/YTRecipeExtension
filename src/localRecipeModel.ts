@@ -445,7 +445,7 @@ const titleRecipeTemplates: TitleRecipeTemplate[] = [
 
 export function extractWithLocalRecipeModel(title: string, url: string, description: string, transcript: string): RecipePayload {
   const descriptionRecipe = parseRecipe(title, url, description);
-  if (hasUsableRecipe(descriptionRecipe)) return descriptionRecipe;
+  if (hasUsableRecipe(descriptionRecipe) && !(transcript && hasTimestampChapters(description))) return descriptionRecipe;
 
   const sourceText = transcript || description;
   const cleaned = cleanRecipeText(sourceText);
@@ -734,6 +734,10 @@ function similar(left: string, right: string): boolean {
 
 function buildFallback(description: string, transcript: string): string {
   return description || transcript.slice(0, 4000);
+}
+
+function hasTimestampChapters(text: string): boolean {
+  return /^\s*(?:(?:\d{1,2}:)?\d{1,2}:\d{2}|:\d{2})\s*[-–—.]?\s*\w+/m.test(text);
 }
 
 function includesPhrase(text: string, phrase: string): boolean {
