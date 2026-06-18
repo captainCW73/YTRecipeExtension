@@ -239,6 +239,124 @@ const titleRecipeTemplates: TitleRecipeTemplate[] = [
     ]
   },
   {
+    pattern: /\b(egg drop soup|egg flower soup)\b/i,
+    title: "Egg Drop Soup",
+    summary: "A quick Chinese-style egg drop soup with seasoned broth, silky egg ribbons, and a light cornstarch thickener.",
+    details: [
+      "Course: Soup",
+      "Prep: 8 minutes",
+      "Cook: 7 minutes",
+      "Total: 15 minutes",
+      "Servings: 4"
+    ],
+    equipment: [
+      "Medium pot",
+      "Mixing bowl",
+      "Whisk or fork",
+      "Measuring spoons",
+      "Ladle"
+    ],
+    ingredientGroups: [
+      {
+        title: "Soup base",
+        items: [
+          "6 cups unsalted chicken broth",
+          "3/4 tsp salt",
+          "1/2 tsp sugar",
+          "1/2 tbsp soy sauce",
+          "1/4 tsp white pepper",
+          "1/2 tsp sesame oil"
+        ]
+      },
+      {
+        title: "Thickener and egg",
+        items: [
+          "4 tbsp cornstarch",
+          "2/3 cup water",
+          "2 large eggs, beaten"
+        ]
+      },
+      {
+        title: "Finish",
+        items: [
+          "2 green onions, thinly sliced",
+          "2 tbsp chopped cilantro, optional"
+        ]
+      }
+    ],
+    instructionGroups: [
+      {
+        title: "Prep",
+        steps: [
+          "Beat the eggs in a small bowl until the yolks and whites are fully mixed.",
+          "Slice the green onions and chop the cilantro if using.",
+          "Stir the cornstarch and water together in a separate bowl until smooth."
+        ]
+      },
+      {
+        title: "Cook the soup",
+        steps: [
+          "Bring the chicken broth to a gentle boil in a medium pot.",
+          "Stir in salt, sugar, soy sauce, white pepper, and sesame oil.",
+          "Whisk the cornstarch slurry again, then slowly stir it into the boiling broth.",
+          "Simmer for 1 to 2 minutes, stirring, until the soup lightly thickens.",
+          "Reduce the heat so the soup is gently moving, not violently boiling.",
+          "Slowly drizzle in the beaten eggs while stirring in one direction to form thin ribbons.",
+          "Turn off the heat as soon as the eggs are set.",
+          "Garnish with green onion and cilantro, then serve hot."
+        ]
+      }
+    ],
+    notes: [
+      "Stir the cornstarch slurry right before adding because it settles quickly.",
+      "Pour the egg slowly for thin ribbons; pour faster for larger curds.",
+      "Use unsalted broth so the salt and soy sauce stay balanced."
+    ],
+    ingredients: [
+      "6 cups unsalted chicken broth",
+      "3/4 tsp salt",
+      "1/2 tsp sugar",
+      "1/2 tbsp soy sauce",
+      "1/4 tsp white pepper",
+      "1/2 tsp sesame oil",
+      "4 tbsp cornstarch",
+      "2/3 cup water",
+      "2 large eggs, beaten",
+      "2 green onions, thinly sliced",
+      "2 tbsp chopped cilantro, optional"
+    ],
+    instructions: [
+      "Beat the eggs in a small bowl until fully mixed.",
+      "Slice the green onions and chop the cilantro if using.",
+      "Stir cornstarch and water together until smooth.",
+      "Bring the chicken broth to a gentle boil.",
+      "Add salt, sugar, soy sauce, white pepper, and sesame oil.",
+      "Stir in the cornstarch slurry and simmer until lightly thickened.",
+      "Slowly drizzle in the beaten eggs while stirring to form ribbons.",
+      "Turn off the heat, garnish, and serve hot."
+    ]
+  },
+  {
+    pattern: /\b(soup|stew|broth)\b/i,
+    title: "Soup",
+    ingredients: [
+      "broth or stock",
+      "salt",
+      "black or white pepper",
+      "aromatics such as onion, garlic, or ginger",
+      "main protein or vegetables",
+      "fresh herbs or garnish"
+    ],
+    instructions: [
+      "Prepare the aromatics, vegetables, protein, and garnish.",
+      "Bring the broth or stock to a simmer in a pot.",
+      "Season the broth gradually with salt and pepper.",
+      "Add the main ingredients in the order shown in the video.",
+      "Simmer until everything is cooked through and the flavor is balanced.",
+      "Taste, adjust seasoning, garnish, and serve hot."
+    ]
+  },
+  {
     pattern: /\b(chicken|chicken breast|chicken thigh)\b/i,
     title: "Chicken",
     ingredients: [
@@ -329,7 +447,7 @@ export function extractWithLocalRecipeModel(title: string, url: string, descript
   const descriptionRecipe = parseRecipe(title, url, description);
   const initialLikelyCooking = analyzeRecipeVideo(title, `${description}\n${transcript}`).likely;
   const initialFallbackText = buildFallback(descriptionRecipe.fallbackText, cleanRecipeText(transcript || description));
-  const initialTitleRecipe = inferRecipeFromTitle(title, url, initialLikelyCooking, initialFallbackText);
+  const initialTitleRecipe = inferRecipeFromTitle(title, url, initialLikelyCooking, initialFallbackText, descriptionRecipe.ingredients);
   if (!transcript && initialTitleRecipe && shouldPreferTitleRecipe(initialTitleRecipe, descriptionRecipe.ingredients, descriptionRecipe.instructions)) return initialTitleRecipe;
   if (hasUsableRecipe(descriptionRecipe)) return descriptionRecipe;
 
@@ -344,8 +462,8 @@ export function extractWithLocalRecipeModel(title: string, url: string, descript
   const finalIngredients = measuredDescriptionIngredients.length ? mergeIngredientLists(measuredDescriptionIngredients, ingredients) : ingredients;
   const hasLocalRecipe = likelyCooking && finalIngredients.length >= 3 && instructions.length >= 3 && !looksLikeWeakRecipeScraps(finalIngredients, instructions);
   const modelConfidence = scoreModelConfidence(likelyCooking, hasLocalRecipe, finalIngredients.length, instructions.length, cleaned.length);
-  const titleRecipe = inferRecipeFromTitle(title, url, likelyCooking, fallbackText);
-  if (titleRecipe && shouldPreferTitleRecipe(titleRecipe, ingredients, instructions)) return titleRecipe;
+  const titleRecipe = inferRecipeFromTitle(title, url, likelyCooking, fallbackText, measuredDescriptionIngredients);
+  if (titleRecipe && shouldPreferTitleRecipe(titleRecipe, finalIngredients, instructions)) return titleRecipe;
   if (!hasLocalRecipe && titleRecipe) return titleRecipe;
 
   return {
@@ -369,10 +487,14 @@ export function extractWithLocalRecipeModel(title: string, url: string, descript
   };
 }
 
-function inferRecipeFromTitle(title: string, url: string, likelyCooking: boolean, fallbackText: string): RecipePayload | null {
+function inferRecipeFromTitle(title: string, url: string, likelyCooking: boolean, fallbackText: string, preferredIngredients: string[] = []): RecipePayload | null {
   if (!likelyCooking || !hasCookingTutorialIntent(title)) return null;
   const template = titleRecipeTemplates.find((item) => item.pattern.test(title));
   if (!template) return null;
+  const ingredients = preferredIngredients.length ? mergeIngredientLists(preferredIngredients, template.ingredients) : template.ingredients;
+  const ingredientGroups = preferredIngredients.length
+    ? [{ title: "Ingredients", items: ingredients }]
+    : template.ingredientGroups;
 
   return {
     title: title || template.title,
@@ -380,10 +502,10 @@ function inferRecipeFromTitle(title: string, url: string, likelyCooking: boolean
     summary: template.summary,
     details: template.details,
     equipment: template.equipment,
-    ingredientGroups: template.ingredientGroups,
+    ingredientGroups,
     instructionGroups: template.instructionGroups,
     notes: template.notes,
-    ingredients: template.ingredients,
+    ingredients,
     instructions: template.instructions,
     fallbackText,
     extractedAt: Date.now(),
@@ -410,7 +532,7 @@ function shouldPreferTitleRecipe(titleRecipe: RecipePayload, ingredients: string
 function looksLikeWeakRecipeScraps(ingredients: string[], instructions: string[]): boolean {
   if (!ingredients.length && instructions.length < 5) return true;
   if (ingredients.some((item) => /\bviews?\b/i.test(item))) return true;
-  if (instructions.some((step) => /\b(add me on|subscribe|follow|views?|demonstrates proper technique|never be sad|from browning the meat)\b/i.test(step))) return true;
+  if (instructions.some((step) => /\b(add me on|subscribe|follow|views?|show transcript|show less|videos about|stacey cook|demonstrates proper technique|never be sad|from browning the meat)\b/i.test(step))) return true;
   if (instructions.length <= 2 && !instructions.some((step) => actionTerms.some((term) => includesPhrase(step, term)))) return true;
   const actionCount = instructions.filter((step) => actionTerms.some((term) => includesPhrase(step, term))).length;
   const prepCount = instructions.filter((step) => prepTerms.some((term) => includesPhrase(step, term))).length;
@@ -517,7 +639,7 @@ function scoreInstruction(segment: string): number {
   if (ingredientTerms.some((term) => includesPhrase(segment, term))) score += localRecipeModelWeights.instruction.ingredient;
   if (/\b\d+\s*(minutes?|mins?|seconds?|secs?|degrees?|f|c)\b/i.test(segment)) score += localRecipeModelWeights.instruction.timing;
   if (/\b(first|next|then|after that|finally|now)\b/i.test(segment)) score += localRecipeModelWeights.instruction.sequence;
-  if (/\b(subscribe|comment|link|channel|episode)\b/i.test(segment)) score += localRecipeModelWeights.instruction.negative;
+  if (/\b(subscribe|comment|link|channel|episode|show transcript|show less|videos about)\b/i.test(segment)) score += localRecipeModelWeights.instruction.negative;
   return score;
 }
 

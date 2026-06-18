@@ -311,6 +311,36 @@ Instructions
   assert.equal(recipe.instructions.some((step) => /0:21|Preparing the green onion|Last step|Stacey Cook/i.test(step)), false);
 });
 
+test("local model uses soup fallback when captions are missing or YouTube UI text", () => {
+  const recipe = localModel.extractWithLocalRecipeModel(
+    "Egg Drop Soup | How To Make Quick And Easy Egg Soup At Home",
+    "https://youtube.com/watch?v=nseYRtHbjNg",
+    `Ingredients
+6 cup unsalted chicken broth
+3/4 tsp salt
+1/2 tsp sugar
+1/2 tbsp soy sauce
+1/4 tsp white pepper
+1/2 tsp sesame oil
+4 tbsp cornstarch
+2/3 cup water
+Simple seasonings and fresh ingredients yield a savory soup full of umami flavor in less than 15 minutes
+Show transcript Cook
+Stacey Cook Videos About Show less`,
+    ""
+  );
+
+  assert.equal(recipe.source, "local-model");
+  assert.ok(recipe.ingredientGroups.length >= 1);
+  assert.ok(recipe.instructionGroups.length >= 2);
+  assert.ok(recipe.ingredients.some((item) => /6 cup unsalted chicken broth/i.test(item)), recipe.ingredients.join(", "));
+  assert.ok(recipe.ingredients.some((item) => /egg/i.test(item)), recipe.ingredients.join(", "));
+  assert.ok(recipe.ingredients.some((item) => /green onions?/i.test(item)), recipe.ingredients.join(", "));
+  assert.ok(recipe.instructions.some((step) => /cornstarch.*water|slurry/i.test(step)), recipe.instructions.join(" | "));
+  assert.ok(recipe.instructions.some((step) => /drizzle.*eggs?|egg.*ribbons/i.test(step)), recipe.instructions.join(" | "));
+  assert.equal(recipe.instructions.some((step) => /show transcript|stacey cook|videos about|show less/i.test(step)), false);
+});
+
 test("local model handles baking captions", () => {
   const recipe = localModel.extractWithLocalRecipeModel(
     "Easy vanilla cake",

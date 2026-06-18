@@ -248,7 +248,7 @@ export function cleanRecipeText(text: string): string {
 }
 
 function isPromoLine(line: string): boolean {
-  return /^(http|www\.|#|@)|subscribe|follow me|instagram|tiktok|facebook|affiliate|sponsored|merch|chapters?|timestamps?/i.test(line);
+  return /^(http|www\.|#|@)|subscribe|follow me|instagram|tiktok|facebook|affiliate|sponsored|merch|chapters?|timestamps?|show transcript|show less|videos about/i.test(line);
 }
 
 function isMetadataLine(line: string): boolean {
@@ -343,7 +343,7 @@ function isRecipeStep(line: string): boolean {
 
 function isBadRecipeItem(line: string): boolean {
   return isMetadataLine(line)
-    || /\b(measuring cups?|mixing bowl|stand mixer|hand mixer|oven rack|views?|subscribers?|comments?|watch next)\b/i.test(line)
+    || /\b(measuring cups?|mixing bowl|stand mixer|hand mixer|oven rack|views?|subscribers?|comments?|watch next|show transcript|show less|videos about)\b/i.test(line)
     || /^cook!\s+\w+/i.test(line);
 }
 
