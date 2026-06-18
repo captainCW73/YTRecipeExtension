@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Cooking Mode for YouTube",
+  "description": "Extract recipes from YouTube descriptions into a clean side panel and keep the screen awake while cooking.",
+  "version": "0.5.0",
+  "minimum_chrome_version": "116",
+  "permissions": ["activeTab", "contextMenus", "scripting", "sidePanel", "storage", "tabs"],
+  "host_permissions": ["*://youtube.com/*", "*://*.youtube.com/*", "http://127.0.0.1/*", "http://localhost/*"],
+  "action": {
+    "default_title": "Cooking Mode",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://youtube.com/*", "*://*.youtube.com/*"],
+      "js": ["contentScript.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
+}

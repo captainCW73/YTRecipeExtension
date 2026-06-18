@@ -1,0 +1,262 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+import { execFileSync } from "node:child_process";
+
+execFileSync("npx", ["esbuild", "src/recipeParser.ts", "--bundle", "--format=esm", "--target=node20", "--outfile=/tmp/cooking-mode-recipe-parser.mjs"], { stdio: "inherit" });
+execFileSync("npx", ["esbuild", "src/localRecipeModel.ts", "--bundle", "--format=esm", "--target=node20", "--outfile=/tmp/cooking-mode-local-recipe-model.mjs"], { stdio: "inherit" });
+const parser = await import(pathToFileURL("/tmp/cooking-mode-recipe-parser.mjs"));
+const localModel = await import(pathToFileURL("/tmp/cooking-mode-local-recipe-model.mjs"));
+
+test("detects cake recipe from title only", () => {
+  assert.equal(parser.isLikelyCookingVideo("How to bake a chocolate cake", ""), true);
+});
+
+test("detects recipe from ingredients and units", () => {
+  const description = `
+Ingredients:
+2 cups flour
+1 cup sugar
+3 eggs
+
+Instructions:
+Preheat oven.
+Mix until smooth.
+Bake for 30 minutes.
+`;
+  assert.equal(parser.isLikelyCookingVideo("Best dessert", description), true);
+});
+
+test("extracts ingredients and procedural steps", () => {
+  const recipe = parser.parseRecipe("Cake", "https://youtube.com/watch?v=test", `
+Ingredients:
+2 cups flour
+1 cup sugar
+3 eggs
+
+Instructions:
+1. Preheat oven to 350F.
+2. Mix everything.
+3. Bake for 30 minutes.
+`);
+
+  assert.deepEqual(recipe.ingredients, ["2 cups flour", "1 cup sugar", "3 eggs"]);
+  assert.deepEqual(recipe.instructions, ["Preheat oven to 350F.", "Mix everything.", "Bake for 30 minutes."]);
+});
+
+test("extracts cake recipe clues without ingredient heading", () => {
+  const recipe = parser.parseRecipe("Bake a vanilla cake with me", "https://youtube.com/watch?v=cake", `
+2 cups flour
+1 cup sugar
+2 eggs
+1 tsp vanilla
+Preheat the oven to 350F.
+Whisk everything together.
+Bake for 25 minutes.
+Let cool before frosting.
+`);
+
+  assert.equal(recipe.likelyCooking, true);
+  assert.deepEqual(recipe.ingredients, ["2 cups flour", "1 cup sugar", "2 eggs", "1 tsp vanilla"]);
+  assert.deepEqual(recipe.instructions, [
+    "Preheat the oven to 350F.",
+    "Whisk everything together.",
+    "Bake for 25 minutes.",
+    "Let cool before frosting."
+  ]);
+});
+
+test("rejects metadata and transcript scraps as a usable recipe", () => {
+  const recipe = parser.parseRecipe("The Most AMAZING Vanilla Cake Recipe", "https://youtube.com/watch?v=cake", `
+4,676,413 views May 11, 2021
+sprinkle it into your measuring cup
+add 1 and 2 3 cups of granulated sugar
+`);
+
+  assert.deepEqual(recipe.ingredients, []);
+  assert.deepEqual(recipe.instructions, [
+    "add 1 and 2 3 cups of granulated sugar"
+  ]);
+  assert.equal(parser.hasUsableRecipe(recipe), false);
+});
+
+test("local model gives detailed vanilla cake fallback when text is messy", () => {
+  const recipe = localModel.extractWithLocalRecipeModel(
+    "The Most AMAZING Vanilla Cake Recipe",
+    "https://youtube.com/watch?v=cake",
+    "4,676,413 views May 11, 2021\nsprinkle it into your measuring cup\nadd 1 and 2 3 cups of granulated sugar",
+    ""
+  );
+
+  assert.equal(recipe.source, "local-model");
+  assert.ok(recipe.ingredients.length >= 8, recipe.ingredients.join(", "));
+  assert.ok(recipe.instructions.length >= 8, recipe.instructions.join(" | "));
+  assert.ok(recipe.summary.length > 20);
+  assert.ok(recipe.equipment.length >= 4);
+  assert.ok(recipe.ingredientGroups.length >= 2);
+  assert.ok(recipe.instructionGroups.length >= 2);
+  assert.ok(recipe.notes.length >= 3);
+  assert.ok(recipe.ingredients.some((item) => /flour/i.test(item)));
+  assert.ok(recipe.instructions.some((step) => /preheat/i.test(step)));
+});
+
+test("local model prefers detailed vanilla fallback over messy captions", () => {
+  const recipe = localModel.extractWithLocalRecipeModel(
+    "The Most AMAZING Vanilla Cake Recipe",
+    "https://youtube.com/watch?v=cake",
+    "Vanilla cake tutorial",
+    "ADD ME ON. add the sugar. add 1 and 2 3 cups of granulated sugar. add three eggs one at a time. add ice cold ingredients into an oven. add the flour."
+  );
+
+  assert.equal(recipe.source, "local-model");
+  assert.ok(recipe.ingredientGroups.length >= 2);
+  assert.ok(recipe.instructions.some((step) => /preheat/i.test(step)));
+  assert.equal(recipe.instructions.some((step) => /ADD ME ON/i.test(step)), false);
+});
+
+test("local model does not trust description-only add-step scraps", () => {
+  const recipe = localModel.extractWithLocalRecipeModel(
+    "The Most AMAZING Vanilla Cake Recipe",
+    "https://youtube.com/watch?v=EYXQmbZNhy8&t=236s",
+    "ADD ME ON:\nadd the sugar\nadd 1 and 2 3 cups of granulated sugar\nadd three eggs in one at a time\nadd the dry mixture\nadd ice cold ingredients into an oven\nadd the flour",
+    ""
+  );
+
+  assert.equal(recipe.source, "local-model");
+  assert.ok(recipe.ingredientGroups.length >= 2);
+  assert.ok(recipe.ingredients.some((item) => /flour/i.test(item)));
+  assert.equal(recipe.instructions.some((step) => /ADD ME ON/i.test(step)), false);
+  assert.ok(recipe.instructions.some((step) => /preheat/i.test(step)));
+});
+
+test("detects short-style cake title with sparse text", () => {
+  const recipe = parser.parseRecipe("3 ingredient mug cake #shorts", "https://youtube.com/shorts/demo", `
+4 tbsp flour
+2 tbsp cocoa
+3 tbsp milk
+Microwave for 90 seconds.
+`);
+
+  assert.equal(recipe.likelyCooking, true);
+  assert.deepEqual(recipe.ingredients, ["4 tbsp flour", "2 tbsp cocoa", "3 tbsp milk"]);
+  assert.deepEqual(recipe.instructions, ["Microwave for 90 seconds."]);
+});
+
+test("detects broad savory recipe tutorial", () => {
+  const analysis = parser.analyzeRecipeVideo("How to make chicken curry from scratch", `
+Ingredients
+2 tbsp oil
+1 onion
+500g chicken
+Instructions
+Simmer until tender.
+`);
+
+  assert.equal(analysis.likely, true);
+  assert.ok(analysis.score >= 7);
+});
+
+test("detects steak recipe tutorial", () => {
+  const analysis = parser.analyzeRecipeVideo("Perfect steak recipe | how to cook ribeye", `
+Ingredients:
+1 lb ribeye steak
+1 tbsp butter
+2 cloves garlic
+Instructions:
+Sear the steak, baste with butter, and rest before slicing.
+`);
+
+  assert.equal(analysis.likely, true);
+});
+
+test("detects Gordon Ramsay perfect steak tutorial title", () => {
+  const analysis = parser.analyzeRecipeVideo("Gordon Ramsay's ULTIMATE COOKERY COURSE: How to Cook the Perfect Steak", "");
+  assert.equal(analysis.likely, true);
+});
+
+test("detects cake cooking title without recipe word", () => {
+  const analysis = parser.analyzeRecipeVideo("The moistest chocolate cake I ever baked", "rich frosting and fluffy layers");
+  assert.equal(analysis.likely, true);
+});
+
+test("detects steak cooking title without recipe word", () => {
+  const analysis = parser.analyzeRecipeVideo("Perfect juicy ribeye steak at home", "butter basted and rested before slicing");
+  assert.equal(analysis.likely, true);
+});
+
+test("detects simple dish title with cooking context", () => {
+  const analysis = parser.analyzeRecipeVideo("Creamy garlic pasta", "boil pasta, simmer sauce, add parmesan");
+  assert.equal(analysis.likely, true);
+});
+
+test("marks local model parsing source and usability", () => {
+  const recipe = parser.parseRecipeFromText("Perfect steak", "https://youtube.com/watch?v=steak", `
+1 lb ribeye steak
+1 tbsp butter
+2 cloves garlic
+Sear the steak in a hot pan.
+Baste with butter and garlic.
+Rest before slicing.
+`, "local-model");
+
+  assert.equal(recipe.source, "local-model");
+  assert.equal(parser.hasUsableRecipe(recipe), true);
+});
+
+test("local model extracts steak recipe from spoken captions", () => {
+  const recipe = localModel.extractWithLocalRecipeModel(
+    "How to cook the perfect steak",
+    "https://youtube.com/watch?v=steak",
+    "Watch Gordon cook steak.",
+    "First take a ribeye steak and season it heavily with salt and black pepper. Add olive oil to a very hot pan. Sear the steak on both sides. Add butter garlic and thyme to the pan. Baste the steak with the foaming butter. Rest the steak for five minutes before slicing and serving."
+  );
+
+  assert.equal(recipe.source, "local-model");
+  assert.ok(recipe.ingredients.some((item) => item.includes("ribeye") || item.includes("steak")));
+  assert.ok(recipe.ingredients.some((item) => item.includes("butter")));
+  assert.ok(recipe.ingredients.some((item) => item.includes("garlic")));
+  assert.ok(recipe.instructions.some((step) => /sear/i.test(step)));
+  assert.ok(recipe.instructions.some((step) => /rest/i.test(step)));
+});
+
+test("local model handles baking captions", () => {
+  const recipe = localModel.extractWithLocalRecipeModel(
+    "Easy vanilla cake",
+    "https://youtube.com/watch?v=cake",
+    "Cake tutorial",
+    "We need flour sugar eggs milk butter vanilla and baking powder. First preheat the oven to 350 degrees. Mix the flour sugar and baking powder. Add eggs milk melted butter and vanilla. Whisk until smooth. Pour into the pan and bake for thirty minutes. Cool before serving."
+  );
+
+  assert.equal(recipe.source, "local-model");
+  for (const ingredient of ["flour", "sugar", "eggs", "milk", "butter", "vanilla", "baking powder"]) {
+    assert.ok(recipe.ingredients.some((item) => item.includes(ingredient.replace(/s$/, ""))), ingredient);
+  }
+  assert.ok(recipe.instructions.some((step) => /preheat/i.test(step)));
+  assert.ok(recipe.instructions.some((step) => /bake/i.test(step)));
+});
+
+test("local model handles savory pasta captions", () => {
+  const recipe = localModel.extractWithLocalRecipeModel(
+    "Creamy garlic pasta",
+    "https://youtube.com/watch?v=pasta",
+    "Pasta dinner",
+    "Use pasta garlic butter cream parmesan salt and pepper. Boil the pasta until tender. Melt butter in a pan. Add garlic and cook for thirty seconds. Pour in cream and simmer. Stir in parmesan. Toss the pasta with the sauce and serve."
+  );
+
+  assert.equal(recipe.source, "local-model");
+  for (const ingredient of ["pasta", "garlic", "butter", "cream", "parmesan"]) {
+    assert.ok(recipe.ingredients.some((item) => item.includes(ingredient)), ingredient);
+  }
+  assert.ok(recipe.instructions.some((step) => /boil/i.test(step)));
+  assert.ok(recipe.instructions.some((step) => /simmer/i.test(step)));
+});
+
+test("rejects food challenge without recipe signals", () => {
+  const analysis = parser.analyzeRecipeVideo("Eating only cake for 24 hours challenge", "funny food challenge vlog");
+  assert.equal(analysis.likely, false);
+});
+
+test("rejects game cake content", () => {
+  const analysis = parser.analyzeRecipeVideo("Minecraft cake build tutorial", "gameplay block tutorial");
+  assert.equal(analysis.likely, false);
+});

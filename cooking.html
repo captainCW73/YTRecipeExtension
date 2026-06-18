@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cooking Mode</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+    <link rel="stylesheet" href="cooking.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="label">Cooking Mode</p>
+          <h1>Recipe View</h1>
+        </div>
+        <span id="wake-status" class="status">Awake</span>
+      </header>
+
+      <section id="empty" class="empty" hidden>
+        <div class="empty-icon">CM</div>
+        <h2>No recipe loaded</h2>
+        <p>Go to a YouTube video, open the extension, then choose Open Full Page.</p>
+      </section>
+
+      <article id="recipe" class="recipe" hidden>
+        <section class="hero">
+          <h2 id="recipe-title"></h2>
+          <div class="meta-row">
+            <span id="recipe-counts" class="counts"></span>
+            <a id="source-link" class="source" target="_blank" rel="noreferrer">Open video</a>
+          </div>
+          <p id="recipe-note" class="note"></p>
+        </section>
+
+        <section id="ingredients-section" class="recipe-section">
+          <h3><span>Ingredients</span></h3>
+          <ul id="ingredients"></ul>
+        </section>
+
+        <section id="instructions-section" class="recipe-section">
+          <h3><span>Instructions</span></h3>
+          <ol id="instructions"></ol>
+        </section>
+
+        <section id="fallback-section" class="recipe-section">
+          <h3><span>Description</span></h3>
+          <pre id="fallback"></pre>
+        </section>
+      </article>
+
+      <footer class="actions">
+        <button id="copy-button" type="button">Copy</button>
+        <button id="end-button" type="button" class="secondary">End</button>
+      </footer>
+    </main>
+    <script type="module" src="sidepanel.js"></script>
+  </body>
+</html>

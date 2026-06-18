@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "positive": [
+    {
+      "id": "eval-steak",
+      "title": "Perfect steak",
+      "transcript": "Take ribeye steak salt pepper olive oil butter garlic and thyme. Season the steak. Sear it in a hot pan. Add butter garlic and thyme. Baste for two minutes. Rest before slicing.",
+      "ingredients": ["ribeye", "salt", "pepper", "olive oil", "butter", "garlic", "thyme"],
+      "steps": ["season", "sear", "baste", "rest"]
+    },
+    {
+      "id": "eval-cake",
+      "title": "Vanilla cake",
+      "transcript": "Use flour sugar eggs milk butter vanilla and baking powder. Preheat the oven. Mix dry ingredients. Add eggs milk butter and vanilla. Whisk smooth. Bake until golden.",
+      "ingredients": ["flour", "sugar", "eggs", "milk", "butter", "vanilla", "baking powder"],
+      "steps": ["preheat", "mix", "whisk", "bake"]
+    },
+    {
+      "id": "eval-curry",
+      "title": "Chicken curry",
+      "transcript": "We are using chicken onion garlic ginger tomato yogurt cumin coriander turmeric and curry powder. Fry the onion. Add garlic and ginger. Add chicken and brown it. Stir in tomato yogurt and spices. Simmer until tender.",
+      "ingredients": ["chicken", "onion", "garlic", "ginger", "tomato", "yogurt", "cumin", "coriander", "turmeric", "curry powder"],
+      "steps": ["fry", "add", "brown", "simmer"]
+    },
+    {
+      "id": "eval-salmon",
+      "title": "Lemon salmon",
+      "transcript": "You need salmon salt pepper lemon olive oil and parsley. Season the salmon. Heat oil in a pan. Sear the fish skin side down. Add lemon. Serve with parsley.",
+      "ingredients": ["salmon", "salt", "pepper", "lemon", "olive oil", "parsley"],
+      "steps": ["season", "heat", "sear", "serve"]
+    },
+    {
+      "id": "eval-tacos-heldout",
+      "title": "Easy beef tacos",
+      "transcript": "For these tacos use ground beef onion chili powder cumin salt tortillas cilantro and lime. Brown the beef in a pan. Add onion and spices. Warm the tortillas. Fill each tortilla with beef. Serve with cilantro and lime.",
+      "ingredients": ["beef", "onion", "chili powder", "cumin", "salt", "tortillas", "cilantro", "lime"],
+      "steps": ["brown", "add", "warm", "fill", "serve"]
+    },
+    {
+      "id": "eval-stir-fry-heldout",
+      "title": "Chicken broccoli stir fry",
+      "transcript": "Use chicken broccoli garlic ginger soy sauce sesame oil and rice. Slice the chicken. Heat sesame oil in the pan. Add chicken and cook until browned. Add broccoli garlic and ginger. Stir in soy sauce. Serve over rice.",
+      "ingredients": ["chicken", "broccoli", "garlic", "ginger", "soy sauce", "sesame oil", "rice"],
+      "steps": ["slice", "heat", "add", "cook", "stir", "serve"]
+    },
+    {
+      "id": "eval-tomato-soup-heldout",
+      "title": "Tomato soup",
+      "transcript": "You need tomato onion garlic broth cream basil salt and pepper. Roast the tomatoes. Cook onion and garlic in a pot. Add broth and simmer. Blend until smooth. Stir in cream and basil.",
+      "ingredients": ["tomato", "onion", "garlic", "broth", "cream", "basil", "salt", "pepper"],
+      "steps": ["roast", "cook", "add", "simmer", "blend", "stir"]
+    },
+    {
+      "id": "eval-bread-heldout",
+      "title": "Simple bread",
+      "transcript": "Use flour yeast salt water and olive oil. Mix flour yeast and salt. Pour in water and oil. Knead until smooth. Let the dough rise. Bake the bread until golden. Cool before slicing.",
+      "ingredients": ["flour", "yeast", "salt", "water", "olive oil"],
+      "steps": ["mix", "pour", "knead", "rise", "bake", "cool"]
+    }
+  ],
+  "negative": [
+    {
+      "id": "neg-steakhouse-review",
+      "title": "Steakhouse review",
+      "transcript": "We visit a steakhouse and review steak fries dessert and service. Subscribe for more restaurant reviews."
+    },
+    {
+      "id": "neg-cake-challenge",
+      "title": "Eating only cake challenge",
+      "transcript": "Today I eat cake chocolate milk and cookies for twenty four hours and rate them. This is a funny challenge not a recipe."
+    },
+    {
+      "id": "neg-grocery-haul",
+      "title": "Grocery haul",
+      "transcript": "I bought chicken rice pasta butter and garlic at the store. Comment below if you like grocery videos."
+    }
+  ],
+  "thresholds": {
+    "ingredientRecall": 0.82,
+    "ingredientPrecision": 0.82,
+    "stepRecall": 0.65,
+    "stepPrecision": 0.65,
+    "positiveConfidence": 0.8,
+    "negativeConfidence": 0.2,
+    "negativeFalseRecipeRate": 0
+  }
+}

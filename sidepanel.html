@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cooking Mode</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="label">Cooking Mode</p>
+          <h1>Cooking Mode</h1>
+        </div>
+        <span id="wake-status" class="status off">Off</span>
+      </header>
+
+      <section id="empty" class="empty" hidden>
+        <div class="empty-icon">CM</div>
+        <h2>No recipe loaded</h2>
+        <p>Open a YouTube cooking video and press the Cooking Mode button.</p>
+      </section>
+
+      <article id="recipe" class="recipe" hidden>
+        <section class="hero">
+          <h2 id="recipe-title"></h2>
+          <div class="meta-row">
+            <span id="recipe-counts" class="counts"></span>
+            <a id="source-link" class="source" target="_blank" rel="noreferrer">Open video</a>
+          </div>
+          <p id="recipe-note" class="note"></p>
+        </section>
+
+        <section id="overview-section" class="recipe-section">
+          <h3><span>Overview</span></h3>
+          <p id="recipe-summary" class="summary"></p>
+          <div id="recipe-details" class="detail-grid"></div>
+        </section>
+
+        <section id="equipment-section" class="recipe-section">
+          <h3><span>Equipment</span></h3>
+          <ul id="equipment"></ul>
+        </section>
+
+        <section id="ingredients-section" class="recipe-section">
+          <h3><span>Ingredients</span></h3>
+          <div id="ingredient-groups" class="group-list"></div>
+          <ul id="ingredients"></ul>
+        </section>
+
+        <section id="instructions-section" class="recipe-section">
+          <h3><span>Instructions</span></h3>
+          <div id="instruction-groups" class="group-list"></div>
+          <ol id="instructions"></ol>
+        </section>
+
+        <section id="notes-section" class="recipe-section">
+          <h3><span>Notes</span></h3>
+          <ul id="notes"></ul>
+        </section>
+
+        <section class="recipe-section settings-section">
+          <label for="wake-mode">Keep Screen Awake</label>
+          <select id="wake-mode">
+            <option value="video">Until video ends</option>
+            <option value="15">15 minutes</option>
+            <option value="30">30 minutes</option>
+            <option value="60">1 hour</option>
+            <option value="120">2 hours</option>
+          </select>
+        </section>
+
+        <section class="recipe-section settings-section">
+          <h3><span>Agent Settings</span></h3>
+          <label class="checkbox-row">
+            <input id="agent-enabled" type="checkbox" />
+            <span>Use recipe agent first</span>
+          </label>
+          <label for="provider">AI provider</label>
+          <select id="provider">
+            <option value="ollama">Local Ollama</option>
+            <option value="openai">OpenAI API</option>
+            <option value="groq">Groq API</option>
+            <option value="deepseek">DeepSeek API</option>
+            <option value="gemini">Gemini API</option>
+            <option value="claude">Claude API</option>
+            <option value="chatgpt" disabled>ChatGPT subscription unavailable</option>
+          </select>
+          <label for="backend-url">Backend URL</label>
+          <input id="backend-url" type="url" placeholder="http://127.0.0.1:8787" />
+          <label for="ollama-url">Ollama URL</label>
+          <input id="ollama-url" type="url" placeholder="http://127.0.0.1:11434" />
+          <label for="api-key">API key</label>
+          <input id="api-key" type="password" placeholder="Optional" />
+          <label for="api-base-url">API base URL</label>
+          <input id="api-base-url" type="url" placeholder="Optional advanced" />
+          <label for="model">Model</label>
+          <input id="model" type="text" placeholder="llama3.2:3b" />
+          <button id="save-agent-settings" type="button" class="inline-button">Save Settings</button>
+          <p class="settings-hint">ChatGPT Plus/Pro cannot be used as API. Use OpenAI API key instead.</p>
+        </section>
+
+        <section id="fallback-section" class="recipe-section">
+          <h3><span>Description</span></h3>
+          <pre id="fallback"></pre>
+        </section>
+      </article>
+
+      <footer class="actions">
+        <button id="copy-button" type="button">Copy</button>
+        <button id="end-button" type="button" class="secondary">End</button>
+      </footer>
+    </main>
+    <script type="module" src="sidepanel.js"></script>
+  </body>
+</html>

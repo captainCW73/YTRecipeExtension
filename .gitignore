@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.context/
+background.js
+contentScript.js
+popup.js
+sidepanel.js
+debug.js

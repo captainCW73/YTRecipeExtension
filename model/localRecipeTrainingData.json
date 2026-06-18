@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "examples": [
+    {
+      "id": "steak-basic",
+      "title": "Perfect steak",
+      "transcript": "Take ribeye steak salt pepper olive oil butter garlic and thyme. Season the steak. Sear it in a hot pan. Add butter garlic and thyme. Baste for two minutes. Rest before slicing.",
+      "ingredients": ["ribeye", "salt", "pepper", "olive oil", "butter", "garlic", "thyme"],
+      "steps": ["season", "sear", "add", "baste", "rest"],
+      "negativeTerms": ["video", "subscribe", "channel"]
+    },
+    {
+      "id": "vanilla-cake",
+      "title": "Vanilla cake",
+      "transcript": "Use flour sugar eggs milk butter vanilla and baking powder. Preheat the oven. Mix dry ingredients. Add eggs milk butter and vanilla. Whisk smooth. Bake until golden.",
+      "ingredients": ["flour", "sugar", "eggs", "milk", "butter", "vanilla", "baking powder"],
+      "steps": ["preheat", "mix", "add", "whisk", "bake"],
+      "negativeTerms": ["follow", "instagram", "description"]
+    },
+    {
+      "id": "chicken-curry",
+      "title": "Chicken curry",
+      "transcript": "We are using chicken onion garlic ginger tomato yogurt cumin coriander turmeric and curry powder. Fry the onion. Add garlic and ginger. Add chicken and brown it. Stir in tomato yogurt and spices. Simmer until tender.",
+      "ingredients": ["chicken", "onion", "garlic", "ginger", "tomato", "yogurt", "cumin", "coriander", "turmeric", "curry powder"],
+      "steps": ["fry", "add", "brown", "stir", "simmer"],
+      "negativeTerms": ["episode", "comment", "website"]
+    },
+    {
+      "id": "lemon-salmon",
+      "title": "Lemon salmon",
+      "transcript": "You need salmon salt pepper lemon olive oil and parsley. Season the salmon. Heat oil in a pan. Sear the fish skin side down. Add lemon. Serve with parsley.",
+      "ingredients": ["salmon", "salt", "pepper", "lemon", "olive oil", "parsley"],
+      "steps": ["season", "heat", "sear", "add", "serve"],
+      "negativeTerms": ["review", "camera", "playlist"]
+    },
+    {
+      "id": "creamy-pasta",
+      "title": "Creamy garlic pasta",
+      "transcript": "Use pasta garlic butter cream parmesan salt and pepper. Boil the pasta until tender. Melt butter in a pan. Add garlic and cook for thirty seconds. Pour in cream and simmer. Stir in parmesan. Toss the pasta with the sauce and serve.",
+      "ingredients": ["pasta", "garlic", "butter", "cream", "parmesan", "salt", "pepper"],
+      "steps": ["boil", "melt", "add", "pour", "simmer", "stir", "toss", "serve"],
+      "negativeTerms": ["reaction", "challenge", "sponsor"]
+    },
+    {
+      "id": "pancakes",
+      "title": "Fluffy pancakes",
+      "transcript": "Grab flour sugar baking powder salt milk eggs vanilla and butter. Whisk dry ingredients. Add milk eggs vanilla and melted butter. Stir until just combined. Cook pancakes on medium heat. Flip when bubbles appear. Serve with honey.",
+      "ingredients": ["flour", "sugar", "baking powder", "salt", "milk", "eggs", "vanilla", "butter", "honey"],
+      "steps": ["whisk", "add", "stir", "cook", "flip", "serve"],
+      "negativeTerms": ["merch", "notification", "vlog"]
+    }
+  ]
+}

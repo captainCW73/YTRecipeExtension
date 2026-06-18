@@ -1,0 +1,147 @@
+:root {
+  --bg: #fff8ef;
+  --panel: #ffffff;
+  --text: #221914;
+  --muted: #77675c;
+  --line: #eadfd3;
+  --accent: #d9471f;
+  --accent-dark: #ad3515;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 280px;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.4 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.popup {
+  padding: 16px;
+}
+
+.label {
+  margin: 0 0 4px;
+  color: var(--accent-dark);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0 0 14px;
+  font-size: 19px;
+  line-height: 1.15;
+}
+
+.status,
+.hint {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.status {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  font-weight: 700;
+}
+
+.actions {
+  display: grid;
+  gap: 8px;
+}
+
+.settings {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.settings label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.settings input[type="url"],
+.settings input[type="password"],
+.settings input[type="text"],
+.settings select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  padding: 0 9px;
+}
+
+.settings option:disabled {
+  color: #9d8e83;
+}
+
+.settings .checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings .checkbox input {
+  width: 16px;
+  height: 16px;
+}
+
+button {
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+button:hover {
+  background: var(--accent-dark);
+}
+
+button.secondary {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
+button.secondary:hover {
+  background: #f7efe7;
+}
+
+button:disabled {
+  background: #d8cbc0;
+  cursor: not-allowed;
+}
+
+.hint {
+  margin-top: 12px;
+  margin-bottom: 0;
+  font-size: 12px;
+}
+
+.version {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: right;
+}

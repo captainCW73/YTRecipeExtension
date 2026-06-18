@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cooking Mode</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="popup">
+      <header>
+        <p class="label">Cooking Mode</p>
+        <h1>YouTube Recipe Helper</h1>
+      </header>
+
+      <p id="status" class="status">Checking tab...</p>
+
+      <div class="actions">
+        <button id="open-button" type="button">Open Cooking Mode</button>
+        <button id="show-button" type="button" class="secondary">Show Page Button</button>
+        <button id="page-button" type="button" class="secondary">Open Full Page</button>
+        <button id="debug-button" type="button" class="secondary">Self Test</button>
+      </div>
+
+      <section class="settings">
+        <label>
+          <span>Agent backend</span>
+          <input id="backend-url" type="url" placeholder="http://127.0.0.1:8787" />
+        </label>
+        <label>
+          <span>AI provider</span>
+          <select id="provider">
+            <option value="ollama">Local Ollama</option>
+            <option value="openai">OpenAI API key</option>
+            <option value="groq">Groq API key</option>
+            <option value="deepseek">DeepSeek API key</option>
+            <option value="gemini">Gemini API key</option>
+            <option value="claude">Claude API key</option>
+            <option value="chatgpt" disabled>ChatGPT subscription unavailable</option>
+          </select>
+        </label>
+        <label>
+          <span>Ollama URL</span>
+          <input id="ollama-url" type="url" placeholder="http://127.0.0.1:11434" />
+        </label>
+        <label>
+          <span>API key</span>
+          <input id="api-key" type="password" placeholder="Optional" />
+        </label>
+        <label>
+          <span>API base URL</span>
+          <input id="api-base-url" type="url" placeholder="Optional advanced" />
+        </label>
+        <label>
+          <span>Model</span>
+          <input id="model" type="text" placeholder="llama3.2:3b" />
+        </label>
+        <label class="checkbox">
+          <input id="agent-enabled" type="checkbox" />
+          <span>Use agent first</span>
+        </label>
+        <button id="save-settings" type="button" class="secondary">Save Agent Settings</button>
+      </section>
+
+      <p class="hint">Agent checks linked recipe pages first. If none, local Ollama creates a recipe. API key optional.</p>
+      <p class="version">v0.5.0</p>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

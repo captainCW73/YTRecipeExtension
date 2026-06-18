@@ -1,0 +1,23 @@
+{
+  "name": "cooking-mode-youtube",
+  "version": "0.5.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "agent": "node scripts/recipe-agent.mjs",
+    "agent:pull-model": "ollama pull llama3.2:3b",
+    "eval:model": "node scripts/eval-local-model.mjs",
+    "smoke:runtime": "node scripts/runtime-smoke.mjs",
+    "test": "node --test tests/*.mjs",
+    "train:model": "node scripts/train-local-model.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@puppeteer/browsers": "^3.0.4",
+    "@types/chrome": "^0.0.290",
+    "esbuild": "^0.28.1",
+    "puppeteer-core": "^25.1.0",
+    "typescript": "^5.7.3"
+  }
+}
