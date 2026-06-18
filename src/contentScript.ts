@@ -76,16 +76,12 @@ function renderButtonWithMode(force: boolean): void {
   const title = readTitle();
   const analysis = analyzeRecipeVideo(title, description);
   const likelyCooking = analysis.likely;
-  if (!force && !likelyCooking) {
-    retryRender();
-    return;
-  }
   if (!title && !description) retryRender();
 
   injectStyle();
   const button = createCookingButton(likelyCooking);
   const placed = isShortsPage() ? placeShortsButton(button) : placeWatchButton(button);
-  if (!placed) retryRender();
+  if (!placed) placeFloatingButton(button);
 }
 
 function createCookingButton(likelyCooking: boolean): HTMLButtonElement {
@@ -151,6 +147,12 @@ function placeWatchButton(button: HTMLButtonElement): boolean {
   );
   if (likeButton) host.insertBefore(button, likeButton);
   else host.prepend(button);
+  return true;
+}
+
+function placeFloatingButton(button: HTMLButtonElement): boolean {
+  button.classList.add("cooking-mode-youtube-floating-button");
+  document.body.append(button);
   return true;
 }
 
@@ -500,6 +502,16 @@ function injectStyle(): void {
 
     #${buttonId}.cooking-mode-youtube-watch-button:hover {
       background: var(--yt-spec-mono-tonal-hover, rgba(255, 255, 255, 0.2)) !important;
+    }
+
+    #${buttonId}.cooking-mode-youtube-floating-button {
+      position: fixed !important;
+      right: 18px !important;
+      bottom: 92px !important;
+      z-index: 2147483647 !important;
+      background: #d9471f !important;
+      color: #fff !important;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28) !important;
     }
 
     #${buttonId}.cooking-mode-youtube-watch-button:disabled {

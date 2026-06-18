@@ -104,6 +104,11 @@ try {
   assert(titleOnlyRecipe.instructions.length === 0, `Title-only invented steps: ${titleOnlyRecipe.instructions.join(" | ")}`);
   assert(titleOnlyRecipe.modelConfidence <= 0.2, `Title-only high confidence: ${titleOnlyRecipe.modelConfidence}`);
 
+  const genericPage = await browser.newPage();
+  await genericPage.goto(`https://youtube.com:${port}/watch?v=runtime-generic`, { waitUntil: "domcontentloaded" });
+  await genericPage.waitForSelector("#cooking-mode-youtube-button", { timeout: 10000 });
+  await assertButtonVisible(genericPage);
+
   const agentPort = await freePort();
   agentProcess = spawn(process.execPath, ["scripts/recipe-agent.mjs"], {
     cwd: root,
@@ -208,12 +213,14 @@ function handleRequest(request, response) {
   }
 
   const videoId = url.searchParams.get("v") || "runtime-steak";
-  const hasCaptions = videoId !== "runtime-title-only" && videoId !== "runtime-linked-cake";
+  const hasCaptions = videoId !== "runtime-title-only" && videoId !== "runtime-linked-cake" && videoId !== "runtime-generic";
   const title = videoId === "runtime-title-only"
     ? "How To Cook The Perfect Steak"
     : videoId === "runtime-linked-cake"
       ? "The Most AMAZING Vanilla Cake Recipe"
-      : "How to Cook the Perfect Steak";
+      : videoId === "runtime-generic"
+        ? "Daily Studio Vlog"
+        : "How to Cook the Perfect Steak";
   const description = videoId === "runtime-linked-cake"
     ? `Full written recipe: http://127.0.0.1:${recipePort}/linked-vanilla-cake-recipe`
     : hasCaptions ? "Cooking tutorial with captions." : "Cooking tutorial.";

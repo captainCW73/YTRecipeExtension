@@ -159,25 +159,25 @@ function render(state?: StoredCookingMode): void {
 
   if (!currentRecipe) return;
 
-  title.textContent = currentRecipe.title;
+  title.textContent = capitalizeDisplayText(currentRecipe.title);
   source.href = currentRecipe.url;
   recipeCounts.textContent = formatCounts(currentRecipe);
   recipeNote.textContent = formatNote(currentRecipe);
-  recipeSummary.textContent = currentRecipe.summary || "";
+  recipeSummary.textContent = currentRecipe.summary ? capitalizeDisplayText(currentRecipe.summary) : "";
   renderDetails(recipeDetails, currentRecipe.details || []);
   renderList(equipment, currentRecipe.equipment || []);
   renderIngredientGroups(ingredientGroups, currentRecipe.ingredientGroups || []);
   renderInstructionGroups(instructionGroups, currentRecipe.instructionGroups || []);
   renderList(notes, currentRecipe.notes || []);
   renderList(ingredients, currentRecipe.ingredients);
-  renderList(instructions, currentRecipe.instructions);
+  renderList(instructions, displayInstructions(currentRecipe));
   overviewSection.hidden = !currentRecipe.summary && !currentRecipe.details?.length;
   equipmentSection.hidden = !currentRecipe.equipment?.length;
   notesSection.hidden = !currentRecipe.notes?.length;
   ingredients.hidden = Boolean(currentRecipe.ingredientGroups?.length);
   instructions.hidden = Boolean(currentRecipe.instructionGroups?.length);
   ingredientsSection.hidden = currentRecipe.ingredients.length === 0 && !currentRecipe.ingredientGroups?.length;
-  instructionsSection.hidden = currentRecipe.instructions.length === 0 && !currentRecipe.instructionGroups?.length;
+  instructionsSection.hidden = false;
   fallback.textContent = currentRecipe.fallbackText;
   fallbackSection.hidden = currentRecipe.ingredients.length > 0 || currentRecipe.instructions.length > 0;
 }
@@ -190,7 +190,7 @@ function renderWakeStatus(active: boolean): void {
 function renderList(node: HTMLElement, items: string[]): void {
   node.replaceChildren(...items.map((item) => {
     const li = document.createElement("li");
-    li.textContent = item;
+    li.textContent = capitalizeDisplayText(item);
     return li;
   }));
 }
@@ -198,7 +198,7 @@ function renderList(node: HTMLElement, items: string[]): void {
 function renderDetails(node: HTMLElement, items: string[]): void {
   node.replaceChildren(...items.map((item) => {
     const detail = document.createElement("span");
-    detail.textContent = item;
+    detail.textContent = capitalizeDisplayText(item);
     return detail;
   }));
 }
@@ -208,7 +208,7 @@ function renderIngredientGroups(node: HTMLElement, groups: NonNullable<RecipePay
     const section = document.createElement("section");
     section.className = "subgroup";
     const heading = document.createElement("h4");
-    heading.textContent = group.title;
+    heading.textContent = capitalizeDisplayText(group.title);
     const list = document.createElement("ul");
     renderList(list, group.items);
     section.append(heading, list);
@@ -221,7 +221,7 @@ function renderInstructionGroups(node: HTMLElement, groups: NonNullable<RecipePa
     const section = document.createElement("section");
     section.className = "subgroup";
     const heading = document.createElement("h4");
-    heading.textContent = group.title;
+    heading.textContent = capitalizeDisplayText(group.title);
     const list = document.createElement("ol");
     renderList(list, group.steps);
     section.append(heading, list);
@@ -245,10 +245,12 @@ function formatRecipe(recipe: RecipePayload): string {
   }
   if (recipe.instructionGroups?.length) {
     parts.push("Instructions");
-    recipe.instructionGroups.forEach((group) => parts.push(group.title, ...group.steps.map((item, index) => `${index + 1}. ${item}`)));
+    recipe.instructionGroups.forEach((group) => parts.push(capitalizeDisplayText(group.title), ...group.steps.map((item, index) => `${index + 1}. ${capitalizeDisplayText(item)}`)));
     parts.push("");
   } else if (recipe.instructions.length) {
-    parts.push("Instructions", ...recipe.instructions.map((item, index) => `${index + 1}. ${item}`), "");
+    parts.push("Instructions", ...recipe.instructions.map((item, index) => `${index + 1}. ${capitalizeDisplayText(item)}`), "");
+  } else {
+    parts.push("Instructions", ...displayInstructions(recipe).map((item, index) => `${index + 1}. ${capitalizeDisplayText(item)}`), "");
   }
   if (recipe.notes?.length) parts.push("Notes", ...recipe.notes.map((item) => `- ${item}`), "");
   if (!recipe.ingredients.length && !recipe.instructions.length) parts.push(recipe.fallbackText);
@@ -257,12 +259,12 @@ function formatRecipe(recipe: RecipePayload): string {
 
 function formatCounts(recipe: RecipePayload): string {
   const parts = [];
-  if (recipe.ingredients.length) parts.push(`${recipe.ingredients.length} ingredients`);
-  if (recipe.instructions.length) parts.push(`${recipe.instructions.length} steps`);
-  if (!parts.length) parts.push("Description fallback");
+  if (recipe.ingredients.length) parts.push(`${recipe.ingredients.length} Ingredients`);
+  if (recipe.instructions.length) parts.push(`${recipe.instructions.length} Steps`);
+  if (!parts.length) parts.push("Description Fallback");
   parts.push(formatSource(recipe));
   if (recipe.modelConfidence !== undefined && recipe.source === "local-model") parts.push(formatConfidence(recipe.modelConfidence));
-  parts.push(recipe.likelyCooking ? "Recipe likely" : "Manual scan");
+  parts.push(recipe.likelyCooking ? "Recipe Likely" : "Manual Scan");
   return parts.join(" · ");
 }
 
@@ -293,7 +295,21 @@ function formatSource(recipe: RecipePayload): string {
 }
 
 function formatConfidence(confidence: number): string {
-  return `${Math.round(confidence * 100)}% confidence`;
+  return `${Math.round(confidence * 100)}% Confidence`;
+}
+
+function displayInstructions(recipe: RecipePayload): string[] {
+  if (recipe.instructions.length) return recipe.instructions;
+  if (recipe.instructionGroups?.length) return [];
+  if (recipe.ingredients.length) return ["No verified step-by-step instructions found in this video's description or captions."];
+  return ["Open a cooking video and press Cook to extract verified instructions."];
+}
+
+function capitalizeDisplayText(value: string): string {
+  const trimmed = value.trim();
+  const index = trimmed.search(/[a-z]/i);
+  if (index === -1) return trimmed;
+  return `${trimmed.slice(0, index)}${trimmed[index].toUpperCase()}${trimmed.slice(index + 1)}`;
 }
 
 function byId<T extends HTMLElement>(id: string): T {
