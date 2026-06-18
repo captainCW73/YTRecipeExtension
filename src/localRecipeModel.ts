@@ -153,23 +153,89 @@ const titleRecipeTemplates: TitleRecipeTemplate[] = [
   },
   {
     pattern: /\b(steak|ribeye|sirloin|filet|filet mignon|new york strip)\b/i,
-    title: "Steak",
+    title: "Pan-Seared Steak",
+    summary: "A restaurant-style thick-cut steak with a hard sear, butter baste, and proper rest so it stays juicy.",
+    details: [
+      "Course: Main",
+      "Prep: 10 minutes",
+      "Cook: 8 to 12 minutes",
+      "Rest: 5 to 10 minutes",
+      "Servings: 1 to 2"
+    ],
+    equipment: [
+      "Heavy skillet or cast iron pan",
+      "Tongs",
+      "Paper towels",
+      "Instant-read thermometer",
+      "Cutting board"
+    ],
+    ingredientGroups: [
+      {
+        title: "Steak",
+        items: [
+          "1 thick-cut New York strip, ribeye, or sirloin steak, 1 1/2 to 2 inches thick",
+          "1 to 1 1/2 tsp kosher salt",
+          "1/2 tsp freshly ground black pepper",
+          "1 tbsp neutral high-heat oil"
+        ]
+      },
+      {
+        title: "Basting and finish",
+        items: [
+          "2 tbsp unsalted butter",
+          "2 garlic cloves, smashed",
+          "2 sprigs thyme or rosemary",
+          "Flaky salt, optional"
+        ]
+      }
+    ],
+    instructionGroups: [
+      {
+        title: "Prep and sear",
+        steps: [
+          "Pat the steak very dry with paper towels so it browns instead of steams.",
+          "Season all sides with kosher salt and black pepper. Let it sit at room temperature for 20 to 30 minutes if you have time.",
+          "Heat a heavy skillet over high heat until it is very hot. Add the oil and swirl to coat the pan.",
+          "Lay the steak in the pan away from you. Sear without moving it until the first side has a deep brown crust, about 2 to 3 minutes.",
+          "Flip the steak and sear the second side. Use tongs to brown the fat cap and edges."
+        ]
+      },
+      {
+        title: "Baste, rest, and serve",
+        steps: [
+          "Lower the heat to medium. Add butter, smashed garlic, and thyme or rosemary.",
+          "Tilt the pan and spoon the foaming butter over the steak for 1 to 2 minutes.",
+          "Cook to your target temperature: about 125F for medium-rare or 135F for medium before resting.",
+          "Transfer the steak to a cutting board and rest for 5 to 10 minutes.",
+          "Slice against the grain and finish with flaky salt if you like."
+        ]
+      }
+    ],
+    notes: [
+      "A dry steak and a very hot pan are what make the crust.",
+      "Use a thermometer when possible; thickness changes cooking time.",
+      "Resting lets juices settle before slicing.",
+      "Do not crowd the pan, or the steak will steam."
+    ],
     ingredients: [
-      "steak",
-      "salt",
-      "black pepper",
-      "neutral oil",
-      "butter",
-      "garlic",
-      "thyme or rosemary"
+      "1 thick-cut New York strip, ribeye, or sirloin steak, 1 1/2 to 2 inches thick",
+      "1 to 1 1/2 tsp kosher salt",
+      "1/2 tsp freshly ground black pepper",
+      "1 tbsp neutral high-heat oil",
+      "2 tbsp unsalted butter",
+      "2 garlic cloves, smashed",
+      "2 sprigs thyme or rosemary",
+      "Flaky salt, optional"
     ],
     instructions: [
-      "Pat the steak dry and season both sides with salt and black pepper.",
-      "Heat a heavy pan over high heat until very hot, then add oil.",
-      "Sear the steak on the first side until deeply browned.",
-      "Flip and sear the second side until browned.",
-      "Add butter, garlic, and herbs, then baste the steak.",
-      "Rest the steak before slicing and serving."
+      "Pat the steak very dry with paper towels.",
+      "Season all sides with kosher salt and black pepper.",
+      "Heat a heavy skillet over high heat, then add neutral oil.",
+      "Sear the first side without moving it until a deep brown crust forms.",
+      "Flip and sear the second side, then brown the fat cap and edges.",
+      "Lower the heat and add butter, smashed garlic, and thyme or rosemary.",
+      "Baste with the foaming butter until the steak reaches your target temperature.",
+      "Rest for 5 to 10 minutes, then slice against the grain."
     ]
   },
   {
@@ -264,7 +330,7 @@ export function extractWithLocalRecipeModel(title: string, url: string, descript
   const initialLikelyCooking = analyzeRecipeVideo(title, `${description}\n${transcript}`).likely;
   const initialFallbackText = buildFallback(descriptionRecipe.fallbackText, cleanRecipeText(transcript || description));
   const initialTitleRecipe = inferRecipeFromTitle(title, url, initialLikelyCooking, initialFallbackText);
-  if (initialTitleRecipe && shouldPreferTitleRecipe(initialTitleRecipe, descriptionRecipe.ingredients, descriptionRecipe.instructions)) return initialTitleRecipe;
+  if (!transcript && initialTitleRecipe && shouldPreferTitleRecipe(initialTitleRecipe, descriptionRecipe.ingredients, descriptionRecipe.instructions)) return initialTitleRecipe;
   if (hasUsableRecipe(descriptionRecipe)) return descriptionRecipe;
 
   const sourceText = transcript || description;
@@ -274,7 +340,7 @@ export function extractWithLocalRecipeModel(title: string, url: string, descript
   const instructions = rankInstructions(segments);
   const fallbackText = buildFallback(descriptionRecipe.fallbackText, cleaned);
   const likelyCooking = analyzeRecipeVideo(title, `${description}\n${transcript}`).likely;
-  const hasLocalRecipe = likelyCooking && instructions.length >= 2 && (ingredients.length > 0 || instructions.length >= 4);
+  const hasLocalRecipe = likelyCooking && ingredients.length >= 3 && instructions.length >= 3 && !looksLikeWeakRecipeScraps(ingredients, instructions);
   const modelConfidence = scoreModelConfidence(likelyCooking, hasLocalRecipe, ingredients.length, instructions.length, cleaned.length);
   const titleRecipe = inferRecipeFromTitle(title, url, likelyCooking, fallbackText);
   if (titleRecipe && shouldPreferTitleRecipe(titleRecipe, ingredients, instructions)) return titleRecipe;
@@ -329,9 +395,22 @@ function shouldPreferTitleRecipe(titleRecipe: RecipePayload, ingredients: string
   if (!titleRecipe.ingredientGroups?.length && !titleRecipe.instructionGroups?.length) return false;
   if (ingredients.length < 3) return true;
   if (instructions.length < 4) return true;
+  if (looksLikeWeakRecipeScraps(ingredients, instructions)) return true;
   if (instructions.filter((step) => /^\s*add\b/i.test(step)).length >= Math.max(3, instructions.length - 1)) return true;
-  if (!instructions.some((step) => /\b(preheat|bake|cool|whisk|mix|beat|frost)\b/i.test(step))) return true;
+  const titleActionWords = titleRecipe.instructions.join(" ");
+  const meaningfulTitleActions = actionTerms.filter((term) => includesPhrase(titleActionWords, term));
+  if (meaningfulTitleActions.length && !instructions.some((step) => meaningfulTitleActions.some((term) => includesPhrase(step, term)))) return true;
   return instructions.some((step) => /\b(add me on|subscribe|follow|views?)\b/i.test(step));
+}
+
+function looksLikeWeakRecipeScraps(ingredients: string[], instructions: string[]): boolean {
+  if (!ingredients.length && instructions.length < 5) return true;
+  if (ingredients.some((item) => /\bviews?\b/i.test(item))) return true;
+  if (instructions.some((step) => /\b(add me on|subscribe|follow|views?|demonstrates proper technique|never be sad|from browning the meat)\b/i.test(step))) return true;
+  if (instructions.length <= 2 && !instructions.some((step) => actionTerms.some((term) => includesPhrase(step, term)))) return true;
+  const actionCount = instructions.filter((step) => actionTerms.some((term) => includesPhrase(step, term))).length;
+  const prepCount = instructions.filter((step) => prepTerms.some((term) => includesPhrase(step, term))).length;
+  return ingredients.length < 4 && instructions.length < 4 && actionCount + prepCount < 3;
 }
 
 function hasCookingTutorialIntent(title: string): boolean {
@@ -507,6 +586,7 @@ function isOverbroadIngredient(item: string, items: string[]): boolean {
   if (item === "fish" && items.some((other) => /salmon|shrimp/.test(other))) return true;
   if (item === "oil" && items.some((other) => /olive oil/.test(other))) return true;
   if (item === "bread" && items.some((other) => /flour|yeast/.test(other))) return true;
+  if (item === "apple" && !items.some((other) => /cinnamon|sugar|flour|pie|cake|oat|butter/.test(other))) return true;
   return false;
 }
 

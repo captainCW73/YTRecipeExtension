@@ -219,6 +219,27 @@ test("local model extracts steak recipe from spoken captions", () => {
   assert.ok(recipe.instructions.some((step) => /rest/i.test(step)));
 });
 
+test("local model prefers rich steak fallback over weak caption scraps", () => {
+  const recipe = localModel.extractWithLocalRecipeModel(
+    "The Best Steak You'll Ever Make (Restaurant-Quality) | Epicurious 101",
+    "https://youtube.com/watch?v=steak",
+    "Epicurious steak tutorial",
+    "From browning the meat to letting it rest, your steaks will never be sad and dry again. Frank Proto demonstrates proper technique for selecting and preparing a thick-cut New York strip steak."
+  );
+
+  assert.equal(recipe.source, "local-model");
+  assert.ok(recipe.ingredientGroups.length >= 2);
+  assert.ok(recipe.instructionGroups.length >= 2);
+  assert.ok(recipe.ingredients.some((item) => /kosher salt|salt/i.test(item)), recipe.ingredients.join(", "));
+  assert.ok(recipe.ingredients.some((item) => /black pepper|pepper/i.test(item)), recipe.ingredients.join(", "));
+  assert.ok(recipe.ingredients.some((item) => /oil/i.test(item)), recipe.ingredients.join(", "));
+  assert.equal(recipe.ingredients.some((item) => /^apple$/i.test(item)), false);
+  assert.ok(recipe.instructions.some((step) => /pat.*dry/i.test(step)), recipe.instructions.join(" | "));
+  assert.ok(recipe.instructions.some((step) => /sear/i.test(step)), recipe.instructions.join(" | "));
+  assert.ok(recipe.instructions.some((step) => /rest/i.test(step)), recipe.instructions.join(" | "));
+  assert.equal(recipe.instructions.some((step) => /never be sad|demonstrates proper technique/i.test(step)), false);
+});
+
 test("local model handles baking captions", () => {
   const recipe = localModel.extractWithLocalRecipeModel(
     "Easy vanilla cake",
