@@ -80,6 +80,44 @@ add 1 and 2 3 cups of granulated sugar
   assert.equal(parser.hasUsableRecipe(recipe), false);
 });
 
+test("rejects YouTube chapter labels as recipe instructions", () => {
+  const recipe = parser.parseRecipe("Egg Drop Soup | How To Make Quick And Easy Egg Soup At Home", "https://youtube.com/watch?v=nseYRtHbjNg", `
+Ingredients
+6 cup unsalted chicken broth
+3/4 tsp salt
+1/2 tsp sugar
+1/2 tbsp soy sauce
+1/4 tsp white pepper
+1/2 tsp sesame oil
+4 tbsp cornstarch
+2/3 cup water
+
+Instructions
+0:21 - Preparing the green onion, cilantro and egg (How to cook Egg Drop Soup Recipe)
+0:39 - Preparing the cornstarch and water mixture (How to cook Egg Drop Soup Recipe)
+0:54 - Boiling the chicken broth (How to cook Egg Drop Soup Recipe)
+1:19 - Adding the cornstarch and water mixture (How to cook Egg Drop Soup Recipe)
+1:50 - Adding the egg (How to cook Egg Drop Soup Recipe)
+2:20 - Last step (How to cook Egg Drop Soup Recipe)
+Preparing the green onion, cilantro and egg (How to cook Egg Drop Soup Recipe)
+Preparing the cornstarch and water mixture (How to cook Egg Drop Soup Recipe)
+Cook! Stacey Cook
+`);
+
+  assert.deepEqual(recipe.ingredients, [
+    "6 cup unsalted chicken broth",
+    "3/4 tsp salt",
+    "1/2 tsp sugar",
+    "1/2 tbsp soy sauce",
+    "1/4 tsp white pepper",
+    "1/2 tsp sesame oil",
+    "4 tbsp cornstarch",
+    "2/3 cup water"
+  ]);
+  assert.deepEqual(recipe.instructions, []);
+  assert.equal(parser.hasUsableRecipe(recipe), false);
+});
+
 test("local model gives detailed vanilla cake fallback when text is messy", () => {
   const recipe = localModel.extractWithLocalRecipeModel(
     "The Most AMAZING Vanilla Cake Recipe",
@@ -238,6 +276,39 @@ test("local model prefers rich steak fallback over weak caption scraps", () => {
   assert.ok(recipe.instructions.some((step) => /sear/i.test(step)), recipe.instructions.join(" | "));
   assert.ok(recipe.instructions.some((step) => /rest/i.test(step)), recipe.instructions.join(" | "));
   assert.equal(recipe.instructions.some((step) => /never be sad|demonstrates proper technique/i.test(step)), false);
+});
+
+test("local model uses transcript when description only has ingredients and chapters", () => {
+  const recipe = localModel.extractWithLocalRecipeModel(
+    "Egg Drop Soup | How To Make Quick And Easy Egg Soup At Home",
+    "https://youtube.com/watch?v=nseYRtHbjNg",
+    `Ingredients
+6 cup unsalted chicken broth
+3/4 tsp salt
+1/2 tsp sugar
+1/2 tbsp soy sauce
+1/4 tsp white pepper
+1/2 tsp sesame oil
+4 tbsp cornstarch
+2/3 cup water
+
+Instructions
+0:21 - Preparing the green onion, cilantro and egg (How to cook Egg Drop Soup Recipe)
+0:39 - Preparing the cornstarch and water mixture (How to cook Egg Drop Soup Recipe)
+0:54 - Boiling the chicken broth (How to cook Egg Drop Soup Recipe)
+1:19 - Adding the cornstarch and water mixture (How to cook Egg Drop Soup Recipe)
+1:50 - Adding the egg (How to cook Egg Drop Soup Recipe)
+2:20 - Last step (How to cook Egg Drop Soup Recipe)`,
+    "Beat the eggs in a bowl. Mix cornstarch with water to make a slurry. Bring unsalted chicken broth to a boil. Season the broth with salt sugar soy sauce white pepper and sesame oil. Stir in the cornstarch slurry until the soup thickens. Slowly pour in the beaten egg while stirring to make ribbons. Garnish with green onion and cilantro and serve hot."
+  );
+
+  assert.equal(recipe.source, "local-model");
+  assert.ok(recipe.ingredients.some((item) => /chicken broth/i.test(item)), recipe.ingredients.join(", "));
+  assert.ok(recipe.ingredients.some((item) => /soy sauce/i.test(item)), recipe.ingredients.join(", "));
+  assert.ok(recipe.ingredients.some((item) => /egg/i.test(item)), recipe.ingredients.join(", "));
+  assert.ok(recipe.instructions.some((step) => /cornstarch slurry/i.test(step)), recipe.instructions.join(" | "));
+  assert.ok(recipe.instructions.some((step) => /pour.*egg/i.test(step)), recipe.instructions.join(" | "));
+  assert.equal(recipe.instructions.some((step) => /0:21|Preparing the green onion|Last step|Stacey Cook/i.test(step)), false);
 });
 
 test("local model handles baking captions", () => {

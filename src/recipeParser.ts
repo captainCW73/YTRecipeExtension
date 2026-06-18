@@ -226,7 +226,7 @@ export function hasUsableRecipe(recipe: RecipePayload): boolean {
   const instructions = recipe.instructions.filter(isRecipeStep);
   const duplicateCount = ingredients.filter((ingredient) => instructions.some((step) => similarRecipeText(ingredient, step))).length;
   if (duplicateCount >= Math.min(ingredients.length, instructions.length) && instructions.length <= 2) return false;
-  return (ingredients.length >= 2 && instructions.length >= 2) || ingredients.length >= 4 || instructions.length >= 4;
+  return ingredients.length >= 2 && instructions.length >= 2;
 }
 
 function includesPhrase(text: string, phrase: string): boolean {
@@ -280,16 +280,36 @@ function extractIngredients(lines: string[]): string[] {
 }
 
 function extractInstructions(lines: string[]): string[] {
-  const fromSection = extractSection(lines, sectionMarkers.instructions, ["notes", "tips", "nutrition", "chapters"], looksLikeInstruction);
-  if (fromSection.length > 0) return fromSection.map(stripListPrefix).slice(0, 30);
+  const fromSection = extractInstructionSection(lines, sectionMarkers.instructions, ["notes", "tips", "nutrition", "chapters"]);
+  if (fromSection.length > 0) return fromSection.slice(0, 30);
 
-  const numbered = lines.filter((line) => /^\s*(\d+[.)]|step\s+\d+)/i.test(line));
-  if (numbered.length > 0) return numbered.map(stripListPrefix).slice(0, 30);
+  const numbered = lines
+    .filter((line) => /^\s*(\d+[.)]|step\s+\d+)/i.test(line))
+    .map(normalizeInstructionLine)
+    .filter(isRecipeStep);
+  if (numbered.length > 0) return dedupe(numbered).slice(0, 30);
 
-  const procedural = lines.filter(looksLikeInstruction);
-  if (procedural.length > 0) return procedural.map(stripListPrefix).slice(0, 20);
+  const procedural = lines
+    .filter(shouldUseInstructionLine)
+    .map(normalizeInstructionLine)
+    .filter(isRecipeStep);
+  if (procedural.length > 0) return dedupe(procedural).slice(0, 20);
 
   return [];
+}
+
+function extractInstructionSection(lines: string[], starts: string[], stops: string[]): string[] {
+  const startIndex = lines.findIndex((line) => starts.some((marker) => isHeading(line, marker)));
+  if (startIndex === -1) return [];
+
+  const result: string[] = [];
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (stops.some((marker) => isHeading(line, marker)) && result.length > 0) break;
+    if (shouldUseInstructionLine(line)) result.push(normalizeInstructionLine(line));
+    if (result.length >= 40) break;
+  }
+  return dedupe(result);
 }
 
 function isHeading(line: string, marker: string): boolean {
@@ -309,7 +329,7 @@ function looksLikeIngredient(line: string): boolean {
 
 function looksLikeInstruction(line: string): boolean {
   if (isBadRecipeItem(line)) return false;
-  return /\b(preheat|mix|whisk|combine|add|pour|bake|cook|cool|serve|frost|microwave|air fry|broil|rest|chill|decorate|fold|beat|cream|sift|grease|line|sear|baste|season|slice)\b/i.test(line)
+  return /\b(preheat|prepare|prep|boil|stir|mix|whisk|combine|add|pour|bake|cook|cool|serve|frost|microwave|air fry|broil|rest|chill|decorate|fold|beat|cream|sift|grease|line|sear|baste|season|slice)\b/i.test(line)
     && line.length <= 220;
 }
 
@@ -323,7 +343,8 @@ function isRecipeStep(line: string): boolean {
 
 function isBadRecipeItem(line: string): boolean {
   return isMetadataLine(line)
-    || /\b(measuring cups?|mixing bowl|stand mixer|hand mixer|oven rack|views?|subscribers?|comments?|watch next)\b/i.test(line);
+    || /\b(measuring cups?|mixing bowl|stand mixer|hand mixer|oven rack|views?|subscribers?|comments?|watch next)\b/i.test(line)
+    || /^cook!\s+\w+/i.test(line);
 }
 
 function hasFoodWord(line: string): boolean {
@@ -342,6 +363,74 @@ function stripListPrefix(line: string): string {
 
 function stripBulletPrefix(line: string): string {
   return line.replace(/^[-*•]\s*/, "").trim();
+}
+
+function shouldUseInstructionLine(line: string): boolean {
+  const normalized = normalizeInstructionLine(line);
+  if (!looksLikeInstruction(normalized)) return false;
+  if (isTimestampChapterLine(line) && isThinChapterInstruction(normalized)) return false;
+  if (hasRecipeTitleParenthetical(line) && isThinChapterInstruction(normalized)) return false;
+  return true;
+}
+
+function normalizeInstructionLine(line: string): string {
+  return normalizeGerundInstruction(
+    stripRecipeTitleParenthetical(stripTimestampPrefix(stripListPrefix(line)))
+      .replace(/\s*[-–—]\s*$/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
+
+function stripTimestampPrefix(line: string): string {
+  return line.replace(/^\s*(?:(?:\d{1,2}:)?\d{1,2}:\d{2}|:\d{2})\s*[-–—.]?\s*/i, "").trim();
+}
+
+function stripRecipeTitleParenthetical(line: string): string {
+  return line.replace(/\s*\([^)]*\b(?:recipe|how to cook|how to make|youtube|video)\b[^)]*\)\s*/gi, " ").trim();
+}
+
+function hasRecipeTitleParenthetical(line: string): boolean {
+  return /\([^)]*\b(?:recipe|how to cook|how to make|youtube|video)\b[^)]*\)/i.test(line);
+}
+
+function isTimestampChapterLine(line: string): boolean {
+  return /^\s*(?:(?:\d{1,2}:)?\d{1,2}:\d{2}|:\d{2})\s*[-–—.]?/i.test(stripBulletPrefix(line));
+}
+
+function normalizeGerundInstruction(line: string): string {
+  const replacements: Array<[RegExp, string]> = [
+    [/^preparing\b/i, "Prepare"],
+    [/^adding\b/i, "Add"],
+    [/^boiling\b/i, "Boil"],
+    [/^mixing\b/i, "Mix"],
+    [/^whisking\b/i, "Whisk"],
+    [/^stirring\b/i, "Stir"],
+    [/^cooking\b/i, "Cook"],
+    [/^baking\b/i, "Bake"],
+    [/^chopping\b/i, "Chop"],
+    [/^cutting\b/i, "Cut"],
+    [/^slicing\b/i, "Slice"],
+    [/^frying\b/i, "Fry"],
+    [/^searing\b/i, "Sear"],
+    [/^serving\b/i, "Serve"],
+    [/^garnishing\b/i, "Garnish"],
+    [/^seasoning\b/i, "Season"]
+  ];
+  for (const [pattern, replacement] of replacements) {
+    if (pattern.test(line)) return line.replace(pattern, replacement);
+  }
+  return line;
+}
+
+function isThinChapterInstruction(line: string): boolean {
+  const normalized = line.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (!normalized) return true;
+  if (/^(intro|outro|last step|final step|next step|first step|cook|recipe|ingredients?)$/.test(normalized)) return true;
+  const startsLikeChapter = /^(prepare|add|boil|mix|whisk|stir|cook|bake|chop|cut|slice|fry|sear|serve|garnish|season)\b/i.test(line);
+  if (!startsLikeChapter) return false;
+  const hasCookingDetail = /\b(\d+|for|until|with|over|into|in a|in the|medium|low|high|minutes?|seconds?|degrees?|smooth|tender|golden|thick|thin|translucent|fragrant|coat|combined)\b/i.test(line);
+  return !hasCookingDetail && line.length < 90;
 }
 
 function dedupe(items: string[]): string[] {

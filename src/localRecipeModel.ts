@@ -340,8 +340,10 @@ export function extractWithLocalRecipeModel(title: string, url: string, descript
   const instructions = rankInstructions(segments);
   const fallbackText = buildFallback(descriptionRecipe.fallbackText, cleaned);
   const likelyCooking = analyzeRecipeVideo(title, `${description}\n${transcript}`).likely;
-  const hasLocalRecipe = likelyCooking && ingredients.length >= 3 && instructions.length >= 3 && !looksLikeWeakRecipeScraps(ingredients, instructions);
-  const modelConfidence = scoreModelConfidence(likelyCooking, hasLocalRecipe, ingredients.length, instructions.length, cleaned.length);
+  const measuredDescriptionIngredients = descriptionRecipe.ingredients.length >= 2 ? descriptionRecipe.ingredients : [];
+  const finalIngredients = measuredDescriptionIngredients.length ? mergeIngredientLists(measuredDescriptionIngredients, ingredients) : ingredients;
+  const hasLocalRecipe = likelyCooking && finalIngredients.length >= 3 && instructions.length >= 3 && !looksLikeWeakRecipeScraps(finalIngredients, instructions);
+  const modelConfidence = scoreModelConfidence(likelyCooking, hasLocalRecipe, finalIngredients.length, instructions.length, cleaned.length);
   const titleRecipe = inferRecipeFromTitle(title, url, likelyCooking, fallbackText);
   if (titleRecipe && shouldPreferTitleRecipe(titleRecipe, ingredients, instructions)) return titleRecipe;
   if (!hasLocalRecipe && titleRecipe) return titleRecipe;
@@ -349,14 +351,16 @@ export function extractWithLocalRecipeModel(title: string, url: string, descript
   return {
     title: title || "Recipe",
     url,
-    ingredients: hasLocalRecipe ? ingredients : [],
+    ingredients: hasLocalRecipe ? finalIngredients : [],
     instructions: hasLocalRecipe ? instructions : [],
     fallbackText,
     extractedAt: Date.now(),
     likelyCooking,
     source: hasLocalRecipe && transcript ? "local-model" : "fallback",
     sourceNote: hasLocalRecipe
-      ? "Local model parsed this from captions because the description did not contain a clean recipe."
+      ? measuredDescriptionIngredients.length
+        ? "Ingredients came from the description; Cooking Mode built the steps from captions because the description only had chapters."
+        : "Local model parsed this from captions because the description did not contain a clean recipe."
       : transcript
         ? "Captions did not contain a clear recipe, so showing the best available text."
         : "Local model could not find captions, so it used the best available description text.",
@@ -440,6 +444,15 @@ function rankIngredients(text: string, segments: string[]): string[] {
     .filter((item, _index, items) => !isOverbroadIngredient(item, items))
     .filter((item, index, items) => !items.slice(0, index).some((previous) => overlapsIngredient(previous, item)))
     .slice(0, 30);
+}
+
+function mergeIngredientLists(primary: string[], secondary: string[]): string[] {
+  const result = [...primary];
+  for (const item of secondary) {
+    if (result.some((existing) => overlapsIngredient(existing, item))) continue;
+    result.push(item);
+  }
+  return result.slice(0, 40);
 }
 
 function collectMeasuredIngredients(text: string, candidates: Map<string, Candidate>): void {
