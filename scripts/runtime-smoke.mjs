@@ -109,6 +109,11 @@ try {
   await genericPage.waitForSelector("#cooking-mode-youtube-button", { timeout: 10000 });
   await assertButtonVisible(genericPage);
 
+  const shortsPage = await browser.newPage();
+  await shortsPage.goto(`https://youtube.com:${port}/shorts/runtime-grilled-cheese`, { waitUntil: "domcontentloaded" });
+  await shortsPage.waitForSelector("#cooking-mode-youtube-button", { timeout: 10000 });
+  await assertShortsButtonAboveLike(shortsPage);
+
   const agentPort = await freePort();
   agentProcess = spawn(process.execPath, ["scripts/recipe-agent.mjs"], {
     cwd: root,
@@ -196,6 +201,31 @@ async function assertButtonVisible(page) {
   assert(/Cook/i.test(visible.text || ""), `Button text missing: ${JSON.stringify(visible)}`);
 }
 
+async function assertShortsButtonAboveLike(page) {
+  const state = await page.$eval("#actions", (actions) => {
+    const children = Array.from(actions.children);
+    const buttonIndex = children.findIndex((child) => child.id === "cooking-mode-youtube-button");
+    const likeIndex = children.findIndex((child) => {
+      const text = `${child.getAttribute("aria-label") || ""} ${child.textContent || ""}`;
+      return /\blike\b/i.test(text) && !/\bdislike\b/i.test(text);
+    });
+    const button = document.querySelector("#cooking-mode-youtube-button");
+    const rect = button?.getBoundingClientRect();
+    return {
+      buttonIndex,
+      likeIndex,
+      width: rect?.width || 0,
+      height: rect?.height || 0,
+      text: button?.textContent || ""
+    };
+  });
+  assert(state.buttonIndex !== -1, `Shorts button not in actions: ${JSON.stringify(state)}`);
+  assert(state.likeIndex !== -1, `Shorts like action missing: ${JSON.stringify(state)}`);
+  assert(state.buttonIndex < state.likeIndex, `Shorts button not above Like: ${JSON.stringify(state)}`);
+  assert(state.width >= 40 && state.height >= 50, `Shorts button hidden: ${JSON.stringify(state)}`);
+  assert(/Cook/i.test(state.text), `Shorts button text missing: ${JSON.stringify(state)}`);
+}
+
 function handleRequest(request, response) {
   const url = new URL(request.url || "/", `https://youtube.com:${port}`);
   console.log(`[server] ${url.pathname}`);
@@ -209,6 +239,46 @@ function handleRequest(request, response) {
         { segs: [{ utf8: "Rest before slicing." }] }
       ]
     }));
+    return;
+  }
+
+  if (url.pathname.startsWith("/shorts/")) {
+    const title = "The Best Grilled Cheese You'll Ever Make | Epicurious 101";
+    const description = "Shorts cooking tutorial with captions.";
+    const playerResponse = JSON.stringify({
+      videoDetails: { shortDescription: description },
+      captions: {
+        playerCaptionsTracklistRenderer: {
+          captionTracks: [{
+            baseUrl: `https://youtube.com:${port}/api/timedtext?lang=en`,
+            languageCode: "en",
+            name: { simpleText: "English" }
+          }]
+        }
+      }
+    });
+    response.writeHead(200, { "Content-Type": "text/html" });
+    response.end(`<!doctype html>
+<html>
+  <head>
+    <title>${title} - YouTube</title>
+    <meta name="description" content="${description}" />
+    <script>var ytInitialPlayerResponse = ${playerResponse};</script>
+  </head>
+  <body>
+    <ytd-shorts>
+      <ytd-reel-player-overlay-renderer>
+        <h2>${title}</h2>
+        <div id="actions">
+          <div aria-label="Like this video"><button aria-label="Like this video">Like</button></div>
+          <div aria-label="Dislike this video"><button aria-label="Dislike this video">Dislike</button></div>
+          <div aria-label="Comments"><button aria-label="Comments">Comments</button></div>
+        </div>
+        <div id="description">${description}</div>
+      </ytd-reel-player-overlay-renderer>
+    </ytd-shorts>
+  </body>
+</html>`);
     return;
   }
 

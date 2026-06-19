@@ -49,6 +49,25 @@ test("local model skips title-only food-adjacent videos without tutorial intent"
   assert.equal(recipe.instructions.length, 0);
 });
 
+test("local model keeps grilled cheese ingredients video-supported", () => {
+  const transcript = [
+    "Use sourdough bread, butter, mayonnaise, cheddar cheese, and gruyere cheese.",
+    "Spread mayonnaise on the outside of the bread.",
+    "Layer cheddar and gruyere between the slices.",
+    "Melt butter in a skillet.",
+    "Place the sandwich in the pan and cook until golden.",
+    "Flip the sandwich and cook until the cheese melts.",
+    "Serve while hot with crisp apple slices on the side."
+  ].join(" ");
+  const recipe = localModel.extractWithLocalRecipeModel("The Best Grilled Cheese You'll Ever Make", "https://youtube.com/watch?v=eval", "", transcript);
+  assert.ok(recipe.ingredients.some((item) => /bread|sourdough/i.test(item)), `Missing bread: ${recipe.ingredients.join(", ")}`);
+  assert.ok(recipe.ingredients.some((item) => /cheddar|cheese/i.test(item)), `Missing cheese: ${recipe.ingredients.join(", ")}`);
+  assert.ok(recipe.ingredients.some((item) => /mayo|mayonnaise/i.test(item)), `Missing mayo: ${recipe.ingredients.join(", ")}`);
+  assert.equal(recipe.ingredients.some((item) => /\bapple\b/i.test(item)), false, `Apple should stay out: ${recipe.ingredients.join(", ")}`);
+  assert.ok(recipe.instructions.some((step) => /spread/i.test(step)), `Missing spread step: ${recipe.instructions.join(" | ")}`);
+  assert.ok(recipe.instructions.some((step) => /flip/i.test(step)), `Missing flip step: ${recipe.instructions.join(" | ")}`);
+});
+
 function recall(expected, actual) {
   const hits = expected.filter((expectedItem) => actual.some((actualItem) => matches(actualItem, expectedItem)));
   return hits.length / expected.length;

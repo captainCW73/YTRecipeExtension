@@ -16,6 +16,8 @@ const foodWords = [
   "icing",
   "buttercream",
   "chocolate",
+  "cheese",
+  "grilled cheese",
   "vanilla",
   "flour",
   "sugar",
@@ -123,7 +125,7 @@ const negativeWords = [
 
 const titleCookingIntent = /\b(how i|i made|i cooked|i baked|making|cooking|baking|grilling|smoking|roasting|searing|frying|perfect|best|easy|quick|simple|juicy|tender|crispy|moist|fluffy|creamy|delicious|restaurant style|better than|ultimate)\b/i;
 
-const titleDishPattern = /\b(cake|steak|ribeye|sirloin|filet|pasta|chicken|beef|pork|salmon|shrimp|tofu|curry|soup|stew|pizza|taco|burger|bread|cookie|brownie|pancake|waffle|lasagna|ramen|biryani|dumpling|omelette)\b/i;
+const titleDishPattern = /\b(cake|steak|ribeye|sirloin|filet|pasta|chicken|beef|pork|salmon|shrimp|tofu|curry|soup|stew|pizza|taco|burger|sandwich|grilled cheese|bread|cookie|brownie|pancake|waffle|lasagna|ramen|biryani|dumpling|omelette)\b/i;
 
 const sectionMarkers = {
   ingredients: ["ingredients", "ingredient list", "what you need"],

@@ -70,7 +70,12 @@ function renderButtonWithMode(force: boolean): void {
     retryRender();
     return;
   }
-  if (document.getElementById(buttonId)) return;
+  const existingButton = document.getElementById(buttonId) as HTMLButtonElement | null;
+  if (existingButton) {
+    if (isShortsPage()) placeShortsButton(existingButton);
+    else placeWatchButton(existingButton);
+    return;
+  }
 
   const description = readDescription();
   const title = readTitle();
@@ -164,8 +169,36 @@ function placeShortsButton(button: HTMLButtonElement): boolean {
     "[is-shorts] #actions"
   ]);
   if (!actions) return false;
-  actions.prepend(button);
+  const likeAction = findShortsLikeAction(actions);
+  if (likeAction && likeAction !== button) actions.insertBefore(button, likeAction);
+  else actions.prepend(button);
   return true;
+}
+
+function findShortsLikeAction(actions: HTMLElement): HTMLElement | null {
+  const candidates = Array.from(actions.querySelectorAll<HTMLElement>(
+    "button, ytd-toggle-button-renderer, ytd-button-renderer, yt-button-shape, .yt-spec-button-shape-next, [aria-label]"
+  ));
+
+  for (const candidate of candidates) {
+    const text = getNodeLabel(candidate);
+    if (!/\blike\b/i.test(text) || /\bdislike\b/i.test(text)) continue;
+    const item = directChildOf(actions, candidate);
+    if (item && item.id !== buttonId) return item;
+  }
+
+  return Array.from(actions.children).find((child) => {
+    const text = getNodeLabel(child as HTMLElement);
+    return /\blike\b/i.test(text) && !/\bdislike\b/i.test(text);
+  }) as HTMLElement | undefined || null;
+}
+
+function directChildOf(parent: HTMLElement, node: HTMLElement): HTMLElement | null {
+  let current: HTMLElement | null = node;
+  while (current && current.parentElement !== parent) {
+    current = current.parentElement;
+  }
+  return current?.parentElement === parent ? current : null;
 }
 
 async function openCookingMode(): Promise<void> {
@@ -217,7 +250,7 @@ function getStoredWakeLockMode(): Promise<WakeLockMode> {
 }
 
 async function buildBestRecipe(title: string, url: string, description: string): Promise<RecipePayload> {
-  const transcript = await fetchTranscript();
+  const transcript = await fetchTranscript() || await fetchTranscriptFromPage();
   const agentRecipe = await askRecipeAgent(title, url, description, transcript);
   if (agentRecipe) return agentRecipe;
   return extractWithLocalRecipeModel(title, url, description, transcript);
@@ -238,6 +271,14 @@ function findFirstElement(selectors: string[]): HTMLElement | null {
     if (node) return node;
   }
   return null;
+}
+
+function getNodeLabel(node: HTMLElement): string {
+  return [
+    node.getAttribute("aria-label"),
+    node.getAttribute("title"),
+    node.textContent
+  ].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
 }
 
 function isYouTubePage(): boolean {
@@ -315,6 +356,78 @@ async function fetchTranscript(): Promise<string> {
   } catch {
     return "";
   }
+}
+
+async function fetchTranscriptFromPage(): Promise<string> {
+  const visibleTranscript = readTranscriptFromDom();
+  if (visibleTranscript) return visibleTranscript;
+
+  await openTranscriptPanel();
+  await new Promise((resolve) => window.setTimeout(resolve, 650));
+  return readTranscriptFromDom();
+}
+
+async function openTranscriptPanel(): Promise<void> {
+  const directButton = findClickableByText(/\b(show transcript|transcript)\b/i);
+  if (directButton) {
+    directButton.click();
+    return;
+  }
+
+  const menuButton = findFirstElement([
+    "ytd-watch-metadata button[aria-label*='More actions' i]",
+    "ytd-menu-renderer button[aria-label*='More actions' i]",
+    "#actions button[aria-label*='More actions' i]",
+    "button[aria-label*='More' i]"
+  ]);
+  menuButton?.click();
+  await new Promise((resolve) => window.setTimeout(resolve, 250));
+  findClickableByText(/\b(show transcript|transcript)\b/i)?.click();
+}
+
+function findClickableByText(pattern: RegExp): HTMLElement | null {
+  const nodes = Array.from(document.querySelectorAll<HTMLElement>(
+    "button, tp-yt-paper-button, tp-yt-paper-item, ytd-menu-service-item-renderer, ytd-button-renderer, [role='button'], [role='menuitem']"
+  ));
+  return nodes.find((node) => {
+    if (node.id === buttonId || node.closest(`#${buttonId}`)) return false;
+    const text = getNodeLabel(node);
+    return pattern.test(text);
+  }) || null;
+}
+
+function readTranscriptFromDom(): string {
+  const transcriptRoot = findFirstElement([
+    "ytd-transcript-renderer",
+    "ytd-engagement-panel-section-list-renderer[target-id='engagement-panel-searchable-transcript']",
+    "#engagement-panel-searchable-transcript",
+    "[class*='transcript']"
+  ]);
+  if (!transcriptRoot) return "";
+
+  const segmentNodes = Array.from(transcriptRoot.querySelectorAll<HTMLElement>(
+    "ytd-transcript-segment-renderer, yt-formatted-string.segment-text, .segment-text, [class*='segment']"
+  ));
+  const rawLines = (segmentNodes.length ? segmentNodes : [transcriptRoot])
+    .map((node) => node.innerText || node.textContent || "")
+    .flatMap((text) => text.split(/\n+/));
+
+  const transcript = rawLines
+    .map(cleanTranscriptLine)
+    .filter((line, index, lines) => line.length >= 3 && lines.indexOf(line) === index)
+    .join(". ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return transcript.length >= 40 ? transcript : "";
+}
+
+function cleanTranscriptLine(line: string): string {
+  return line
+    .replace(/\b(?:\d{1,2}:)?\d{1,2}:\d{2}\b/g, " ")
+    .replace(/\bTranscript\b|\bShow transcript\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 type CaptionTrack = {

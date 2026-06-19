@@ -22,19 +22,19 @@ type TitleRecipeTemplate = {
 };
 
 const ingredientTerms = [
-  "anchovy", "apple", "avocado", "bacon", "basil", "bean", "beef", "bell pepper", "bread", "broccoli", "broth", "butter",
+  "american cheese", "anchovy", "apple", "avocado", "bacon", "basil", "bean", "beef", "bell pepper", "bread", "broccoli", "broth", "butter",
   "cake flour", "carrot", "celery", "cheddar", "cheese", "chicken", "chili", "chili powder", "chocolate", "cilantro", "cinnamon", "cocoa",
   "baking powder", "coriander", "cream", "cumin", "curry powder", "egg", "fish", "flour", "garlic", "ginger", "honey", "lemon", "lime", "milk", "mushroom",
-  "mustard", "noodle", "oil", "olive oil", "onion", "oregano", "paprika", "parmesan", "parsley", "pasta",
+  "gruyere", "mayo", "mayonnaise", "mustard", "noodle", "oil", "olive oil", "onion", "oregano", "paprika", "parmesan", "parsley", "pasta",
   "pepper", "pork", "potato", "rice", "ribeye", "salmon", "salt", "shrimp", "sirloin", "sour cream",
-  "sesame oil", "soy sauce", "steak", "stock", "sugar", "thyme", "tomato", "tortilla", "turmeric", "vanilla", "vinegar", "water", "yeast", "yogurt", "zucchini"
+  "sesame oil", "sourdough", "soy sauce", "steak", "stock", "sugar", "thyme", "tomato", "tortilla", "turmeric", "vanilla", "vinegar", "water", "yeast", "yogurt", "zucchini"
 ];
 
 const actionTerms = [
   "add", "bake", "baste", "beat", "blend", "boil", "broil", "brown", "chill", "chop", "combine", "cook", "cool", "cut", "fill",
-  "dice", "drain", "flip", "fold", "fry", "grate", "grill", "knead", "marinate", "melt", "mix", "peel",
-  "pour", "preheat", "reduce", "rest", "rise", "roast", "saute", "season", "sear", "serve", "simmer", "slice",
-  "stir", "toast", "toss", "warm", "whisk"
+  "dice", "drain", "flip", "fold", "fry", "grate", "grill", "knead", "layer", "lay", "marinate", "melt", "mix", "peel",
+  "place", "pour", "preheat", "reduce", "rest", "rise", "roast", "saute", "season", "sear", "serve", "simmer", "slice",
+  "spread", "stir", "toast", "toss", "turn", "warm", "whisk"
 ];
 
 const prepTerms = [
@@ -715,7 +715,7 @@ function isOverbroadIngredient(item: string, items: string[]): boolean {
   if (item === "fish" && items.some((other) => /salmon|shrimp/.test(other))) return true;
   if (item === "oil" && items.some((other) => /olive oil/.test(other))) return true;
   if (item === "bread" && items.some((other) => /flour|yeast/.test(other))) return true;
-  if (item === "apple" && !items.some((other) => /cinnamon|sugar|flour|pie|cake|oat|butter/.test(other))) return true;
+  if (/\bapple\b/.test(item) && !items.some((other) => /cinnamon|brown sugar|caramel|lemon|flour|pie|cake|oat|crumble/.test(other))) return true;
   return false;
 }
 
